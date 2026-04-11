@@ -1,0 +1,28 @@
+#pragma once
+
+// ── WiFi ────────────────────────────────────────────────────
+#define WIFI_SSID     "your_ssid"
+#define WIFI_PASS     "your_password"
+
+// ── HiveMQ ──────────────────────────────────────────────────
+#define MQTT_HOST     "your-cluster.s1.eu.hivemq.cloud"
+#define MQTT_PORT     8883
+#define MQTT_USER     "ESP32"
+#define MQTT_PASS     "your_mqtt_password"
+#define MQTT_CLIENT   "ESP32_Client"
+
+// ── MQTT Topics ─────────────────────────────────────────────
+#define TOPIC_ENROLL_USERID   "Enroll/UserID"
+#define TOPIC_ENROLL_NOME     "Enroll/Nome"
+#define TOPIC_ENROLL_RESPONSE "Enroll/Response"
+
+// ── Hardware pins ────────────────────────────────────────────
+#define FP_RX_PIN     16      // Sensor TX → GPIO16 (ESP RX2)
+#define FP_TX_PIN     17      // Sensor RX ← GPIO17 (ESP TX2)
+#define FP_BAUD       57600
+
+#define LCD_SDA_PIN   21
+#define LCD_SCL_PIN   22
+#define LCD_ADDRESS   0x27
+#define LCD_COLS      16
+#define LCD_ROWS      2
