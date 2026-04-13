@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
-//teste de wifi com lcd i2c 16x2
+
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 const char* ssid = "your_wifi_ssid";
