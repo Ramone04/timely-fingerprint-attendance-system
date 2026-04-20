@@ -33,12 +33,16 @@ void mqttSetup()
     mqttClient.setCallback(callback);
 }
 
-bool mqttConnect()
-{
+bool mqttConnect() {
     if (mqttClient.connected()) return true;
     if (WiFi.status() != WL_CONNECTED) return false;
-
-    return mqttClient.connect(MQTT_CLIENT, MQTT_USER, MQTT_PASS);
+    
+    if (mqttClient.connect(MQTT_CLIENT, MQTT_USER, MQTT_PASS)) {
+        mqttClient.subscribe(TOPIC_ENROLL_USERID);
+        mqttClient.subscribe(TOPIC_ENROLL_NOME);
+        return true;
+    }
+    return false;
 }
 
 void mqttLoop()
@@ -58,8 +62,3 @@ bool mqttPublish(const char* topic, const char* payload)
     return mqttClient.publish(topic, payload);
 }
 
-bool mqttSubscribe(const char* topic)
-{
-    if (!mqttClient.connected()) return false;
-    return mqttClient.subscribe(topic);
-}
