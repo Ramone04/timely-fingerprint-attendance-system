@@ -4,39 +4,24 @@
 #include "display_manager.h"
 #include "mqtt_manager.h"
 
-void onMqttMessage(char* topic, byte* payload, unsigned int length) {
-    Serial.print("MQTT mensagem em ");
-    Serial.print(topic);
-    Serial.print(": ");
-
-    for (unsigned int index = 0; index < length; index++) {
-        Serial.print((char)payload[index]);
-    }
-    Serial.println();
-}
-
 void setup() {
     Serial.begin(115200);   
     delay(1000);
 
     initLCD();
     connectWiFi();
-    mqttSetup(onMqttMessage);
+    mqttSetup();
 }
 
 void loop()
 {
-    static bool mqttSubscribed = false;
-
     // Blocks here if Wi-Fi drops, and resumes only when connected again.
     connectWiFi();
     mqttLoop();
 
-    if (mqttConnect()) {
-        if (!mqttSubscribed) {
-            mqttSubscribed = mqttSubscribe(TOPIC_ENROLL_RESPONSE);
-        }
-    } else {
-        mqttSubscribed = false;
-    }
+    //Teste de subscrição e publicação MQTT
+    mqttSubscribe(TOPIC_ENROLL_USERID);
+    mqttSubscribe(TOPIC_ENROLL_NOME);
+    mqttPublish(TOPIC_ENROLL_RESPONSE, "ESP32 ready to enroll");
+    delay(10000); // Publish status every 10 seconds
 }
