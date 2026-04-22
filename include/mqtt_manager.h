@@ -1,9 +1,10 @@
 #pragma once
 #include <PubSubClient.h>
 
-void mqttSetup();
+// Tipo do callback 
+typedef void (*MqttCallback)(char*, byte*, unsigned int);
+
+void mqttSetup(MqttCallback callback);
 bool mqttConnect();
 void mqttLoop();
 bool mqttPublish(const char* topic, const char* payload);
-
-extern PubSubClient mqttClient;
