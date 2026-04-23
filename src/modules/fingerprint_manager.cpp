@@ -1,5 +1,6 @@
 #include "fingerprint_manager.h"
 #include "display_manager.h"
+#include "mqtt_manager.h"
 #include "config.h"
 #include <Adafruit_Fingerprint.h>
 
@@ -30,6 +31,7 @@ static uint8_t waitForFinger() {
     uint8_t result;
     do {
         result = finger.getImage();
+        mqttLoop(); //para que a ligação MQTT não caia durante a espera
         delay(50);
     } while (result == FINGERPRINT_NOFINGER);
     return result;
@@ -38,6 +40,7 @@ static uint8_t waitForFinger() {
 // Aguarda que o dedo seja removido
 static void waitForLift() {
     while (finger.getImage() != FINGERPRINT_NOFINGER) {
+        mqttLoop(); //para que a ligação MQTT não caia durante a espera
         delay(100);
     }
 }
