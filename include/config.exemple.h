@@ -5,6 +5,8 @@
 #define WIFI_PASS     "your_password"
 
 // ── HiveMQ ──────────────────────────────────────────────────
+// Port 8883 = TLS/SSL (required for HiveMQ Cloud)
+// The CA certificate (ISRG Root X1 / Let's Encrypt) is embedded in mqtt_manager.cpp
 #define MQTT_HOST     "your-cluster.s1.eu.hivemq.cloud"
 #define MQTT_PORT     8883
 #define MQTT_USER     "ESP32"
