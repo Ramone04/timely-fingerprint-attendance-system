@@ -3,6 +3,7 @@
 #include "wifi_manager.h"
 #include "display_manager.h"
 #include "mqtt_manager.h"
+#include "http_manager.h"
 #include "fingerprint_manager.h"
 
 // Variáveis globais para armazenar os dados pendentes do mqtt
