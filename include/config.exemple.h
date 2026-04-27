@@ -18,6 +18,9 @@
 #define TOPIC_ENROLL_NOME     "Enroll/Nome"
 #define TOPIC_ENROLL_RESPONSE "Enroll/Response"
 
+// ── Laravel API ───────────────────────────────────────────────
+#define ENROLL_STATUS_URL     "https://timely.mindshaker.com/esp32/enroll-status"
+
 // ── Hardware pins ────────────────────────────────────────────
 #define FP_RX_PIN     16      // Sensor TX → GPIO16 (ESP RX2)
 #define FP_TX_PIN     17      // Sensor RX ← GPIO17 (ESP TX2)

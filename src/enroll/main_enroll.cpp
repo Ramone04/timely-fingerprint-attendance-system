@@ -84,11 +84,15 @@ void loop()
     if (result == 1) {
         Serial.println("Enroll bem-sucedido!");
         LCDMessage("Enroll", "bem-sucedido!");
-        mqttPublish(TOPIC_ENROLL_RESPONSE, "1");
+        if (!sendEnrollStatus(pendingUserID, 1)) {
+            Serial.println("Falha ao enviar status HTTP de enroll (sucesso).");
+        }
     } else {
         Serial.println("Enroll falhou.");
         LCDMessage("Enroll", "falhou.");
-        mqttPublish(TOPIC_ENROLL_RESPONSE, "0");
+        if (!sendEnrollStatus(pendingUserID, 0)) {
+            Serial.println("Falha ao enviar status HTTP de enroll (falha).");
+        }
     }
 
     // Mantem a mensagem de resultado 3 segundos

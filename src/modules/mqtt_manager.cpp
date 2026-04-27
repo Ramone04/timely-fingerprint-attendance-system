@@ -1,6 +1,7 @@
 #include "mqtt_manager.h"
 #include "config.h"
 #include <WiFiClientSecure.h>
+#include <HTTPClient.h>
 #include <WiFi.h>
 #include "display_manager.h"
 #include "certificates.h"
@@ -50,3 +51,26 @@ bool mqttPublish(const char* topic, const char* payload)
     return mqttClient.publish(topic, payload);
 }
 
+bool sendEnrollStatus(uint16_t userId, uint8_t status)
+{
+    if (WiFi.status() != WL_CONNECTED) return false;
+
+    WiFiClientSecure httpClient;
+    HTTPClient http;
+
+    httpClient.setCACert(HIVEMQ_CA_CERT);
+    if (!http.begin(httpClient, ENROLL_STATUS_URL)) return false;
+
+    http.addHeader("Content-Type", "application/json");
+    String payload = "{\"user_id\":";
+    payload += String(userId);
+    payload += ",\"status\":";
+    payload += String(status);
+    payload += "}";
+
+    int code = http.POST(payload);
+    Serial.printf("Enroll status HTTP code: %d\n", code);
+    http.end();
+
+    return code > 0 && code < 300;
+}

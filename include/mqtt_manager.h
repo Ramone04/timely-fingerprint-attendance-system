@@ -8,3 +8,4 @@ void mqttSetup(MqttCallback callback);
 bool mqttConnect();
 void mqttLoop();
 bool mqttPublish(const char* topic, const char* payload);
+bool sendEnrollStatus(uint16_t userId, uint8_t status);
