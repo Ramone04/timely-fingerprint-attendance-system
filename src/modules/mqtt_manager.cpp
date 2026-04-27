@@ -49,4 +49,3 @@ bool mqttPublish(const char* topic, const char* payload)
     if (!mqttClient.connected()) return false;
     return mqttClient.publish(topic, payload);
 }
-
