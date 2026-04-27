@@ -14,7 +14,13 @@ void connectWiFi()
     IPAddress dns1(8, 8, 8, 8);
     IPAddress dns2(1, 1, 1, 1);
 
-    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, dns1, dns2);
+    WiFi.config(
+    IPAddress(0,0,0,0),
+    IPAddress(0,0,0,0),
+    IPAddress(0,0,0,0),
+    dns1,
+    dns2
+);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     while (WiFi.status() != WL_CONNECTED)
     {
