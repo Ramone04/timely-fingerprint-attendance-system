@@ -2,7 +2,6 @@
 #include "config.h"
 #include <WiFiClientSecure.h>
 #include <WiFi.h>
-#include "display_manager.h"
 #include "certificates.h"
 
 static WiFiClientSecure net;
@@ -42,10 +41,4 @@ void mqttLoop()
     }
 
     mqttClient.loop();
-}
-
-bool mqttPublish(const char* topic, const char* payload)
-{
-    if (!mqttClient.connected()) return false;
-    return mqttClient.publish(topic, payload);
 }
