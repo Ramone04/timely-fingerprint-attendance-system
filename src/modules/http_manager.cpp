@@ -21,7 +21,7 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     }
 
     http.addHeader("Content-Type", "application/json");
-    // {"user_id":65535,"status":255}: 30 chars + '\0'
+    // {"user_id":65535,"status":255}: 30 chars + '\0' (64 por margem de segurança)
     char payload[64];
     snprintf(payload, sizeof(payload), "{\"user_id\":%u,\"status\":%u}", userId, status);
 

@@ -86,13 +86,13 @@ void loop()
         Serial.println("Enroll bem-sucedido!");
         LCDMessage("Enroll", "bem-sucedido!");
         if (!sendEnrollStatus(pendingUserID, 1)) {
-            Serial.println("Falha ao enviar status HTTP de enroll (sucesso) — sem retry automático.");
+            Serial.println("Falha ao enviar status HTTP (enroll sucesso) — sem retry automático.");
         }
     } else {
         Serial.println("Enroll falhou.");
         LCDMessage("Enroll", "falhou.");
         if (!sendEnrollStatus(pendingUserID, 0)) {
-            Serial.println("Falha ao enviar status HTTP de enroll (falha) — sem retry automático.");
+            Serial.println("Falha ao enviar status HTTP (enroll falha) — sem retry automático.");
         }
     }
 
