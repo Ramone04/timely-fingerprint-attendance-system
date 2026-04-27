@@ -34,6 +34,7 @@ void setup() {
     
     initLCD();
     connectWiFi();
+
     mqttSetup(onMqttMessage);
     initSensor();
     resetState();
