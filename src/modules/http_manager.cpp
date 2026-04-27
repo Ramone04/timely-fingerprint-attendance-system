@@ -33,4 +33,3 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     if (code < 0) return false;
     return code >= 200 && code < 300;
 }
-
