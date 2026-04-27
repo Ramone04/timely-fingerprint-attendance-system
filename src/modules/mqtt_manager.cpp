@@ -67,7 +67,7 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     }
 
     http.addHeader("Content-Type", "application/json");
-    // {"user_id":65535,"status":255} => 29 chars + '\0'
+    // {"user_id":65535,"status":255}: 29 chars + '\0'
     char payload[64];
     snprintf(payload, sizeof(payload), "{\"user_id\":%u,\"status\":%u}", userId, status);
 
@@ -76,5 +76,6 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     http.end();
     httpClient.stop();
 
+    if (code < 0) return false;
     return code >= 200 && code < 300;
 }

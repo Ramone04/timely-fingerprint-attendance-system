@@ -16,7 +16,6 @@
 // ── MQTT Topics ─────────────────────────────────────────────
 #define TOPIC_ENROLL_USERID   "Enroll/UserID"
 #define TOPIC_ENROLL_NOME     "Enroll/Nome"
-#define TOPIC_ENROLL_RESPONSE "Enroll/Response"
 
 // ── Laravel API ───────────────────────────────────────────────
 #define ENROLL_STATUS_URL     "https://timely.mindshaker.com/esp32/enroll-status"
