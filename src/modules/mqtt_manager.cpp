@@ -53,10 +53,13 @@ bool mqttPublish(const char* topic, const char* payload)
 
 bool sendEnrollStatus(uint16_t userId, uint8_t status)
 {
-    if (WiFi.status() != WL_CONNECTED) return false;
-
     WiFiClientSecure httpClient;
     HTTPClient http;
+
+    if (WiFi.status() != WL_CONNECTED) {
+        httpClient.stop();
+        return false;
+    }
 
     httpClient.setCACert(ENROLL_API_CA_CERT);
     if (!http.begin(httpClient, ENROLL_STATUS_URL)) {
@@ -71,6 +74,7 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     int code = http.POST(payload);
     Serial.printf("Enroll status HTTP code: %d\n", code);
     http.end();
+    httpClient.stop();
 
     return code >= 200 && code < 300;
 }
