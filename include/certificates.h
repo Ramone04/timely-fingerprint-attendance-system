@@ -43,4 +43,4 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 )EOF";
 
 // CA usado para HTTPS da API Laravel (atualize se o backend usar outro emissor)
-static const char* const ENROLL_API_CA_CERT = HIVEMQ_CA_CERT;
+static const char* const LARAVEL_CA_CERT = HIVEMQ_CA_CERT;
