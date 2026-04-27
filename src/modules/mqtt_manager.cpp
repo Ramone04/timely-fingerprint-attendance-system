@@ -58,7 +58,7 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     WiFiClientSecure httpClient;
     HTTPClient http;
 
-    httpClient.setCACert(HIVEMQ_CA_CERT);
+    httpClient.setCACert(ENROLL_API_CA_CERT);
     if (!http.begin(httpClient, ENROLL_STATUS_URL)) return false;
 
     http.addHeader("Content-Type", "application/json");
@@ -72,5 +72,5 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     Serial.printf("Enroll status HTTP code: %d\n", code);
     http.end();
 
-    return code > 0 && code < 300;
+    return code >= 200 && code < 300;
 }
