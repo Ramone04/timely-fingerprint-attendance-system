@@ -59,14 +59,14 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     HTTPClient http;
 
     httpClient.setCACert(ENROLL_API_CA_CERT);
-    if (!http.begin(httpClient, ENROLL_STATUS_URL)) return false;
+    if (!http.begin(httpClient, ENROLL_STATUS_URL)) {
+        httpClient.stop();
+        return false;
+    }
 
     http.addHeader("Content-Type", "application/json");
-    String payload = "{\"user_id\":";
-    payload += String(userId);
-    payload += ",\"status\":";
-    payload += String(status);
-    payload += "}";
+    char payload[64];
+    snprintf(payload, sizeof(payload), "{\"user_id\":%u,\"status\":%u}", userId, status);
 
     int code = http.POST(payload);
     Serial.printf("Enroll status HTTP code: %d\n", code);
