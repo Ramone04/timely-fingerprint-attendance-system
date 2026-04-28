@@ -1,18 +1,30 @@
 #include "http_manager.h"
 #include "config.h"
+#include "certificates.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
+// ← static — criado uma vez, vive durante toda a execução
+// Evita fragmentação do heap do mbedTLS entre chamadas
+static WiFiClientSecure httpClient;
+static bool httpClientInitialized = false;
+
+// Inicializa o cliente TLS uma única vez
+static void initHttpClient() {
+    if (httpClientInitialized) return;
+    httpClient.setCACert(LARAVEL_CA_CERT);
+    httpClientInitialized = true;
+}
+
 bool sendEnrollStatus(uint16_t userId, uint8_t status) {
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[HTTP] WiFi não ligado — não é possível enviar");
+        Serial.println("[HTTP] WiFi não ligado");
         return false;
     }
 
-    WiFiClientSecure httpClient;
-    httpClient.setInsecure();  // temporário — substituir por setCACert quando tiveres o cert
-    //httpClient.setCACert(LARAVEL_CA_CERT);
+    initHttpClient();  // só faz algo na primeira chamada
+
     HTTPClient http;
     if (!http.begin(httpClient, ENROLL_STATUS_URL)) {
         Serial.println("[HTTP] Falha ao iniciar ligação");
@@ -21,7 +33,6 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status) {
 
     http.addHeader("Content-Type", "application/json");
 
-    // {"user_id":65535,"status":255} → 30 chars + '\0'
     char payload[64];
     snprintf(payload, sizeof(payload),
         "{\"user_id\":%u,\"status\":%u}", userId, status);
@@ -38,7 +49,6 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status) {
         Serial.printf("[HTTP] Erro: %s\n", http.errorToString(code).c_str());
     }
 
-    http.end();  // único close necessário
+    http.end();
     return code >= 200 && code < 300;
 }
- 
