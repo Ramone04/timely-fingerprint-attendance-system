@@ -6,9 +6,11 @@
 
 static WiFiClientSecure net;
 PubSubClient mqttClient(net);
+static bool mqttInitialized = false;
 
 void mqttSetup(MqttCallback callback)
 {
+    mqttInitialized = true;
     net.setCACert(HIVEMQ_CA_CERT);
     // net.setHandshakeTimeout(30);
     //net.setInsecure(); // Aceita qualquer certificado (não recomendado para produção, mas simplifica o desenvolvimento)
@@ -34,6 +36,7 @@ bool mqttConnect() {
 
 void mqttLoop()
 {
+    if (!mqttInitialized) return;
     if (WiFi.status() != WL_CONNECTED) return;
     if (!mqttClient.connected()) {
         mqttConnect();

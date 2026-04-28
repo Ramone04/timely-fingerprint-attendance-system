@@ -52,3 +52,39 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status) {
     http.end();
     return code >= 200 && code < 300;
 }
+
+bool sendScanResult(uint16_t fingerprintId, uint16_t confidence) {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("[HTTP] WiFi não ligado");
+        return false;
+    }
+
+    initHttpClient();
+
+    HTTPClient http;
+    if (!http.begin(httpClient, SCAN_RESULT_URL)) {
+        Serial.println("[HTTP] Falha ao iniciar ligação");
+        return false;
+    }
+
+    http.addHeader("Content-Type", "application/json");
+
+    char payload[80];
+    snprintf(payload, sizeof(payload),
+        "{\"fingerprint_id\":%u,\"confidence\":%u}", fingerprintId, confidence);
+
+    Serial.printf("[HTTP] POST %s\n", SCAN_RESULT_URL);
+    Serial.printf("[HTTP] Body: %s\n", payload);
+
+    int code = http.POST(payload);
+
+    if (code > 0) {
+        Serial.printf("[HTTP] Resposta: %d\n", code);
+        Serial.printf("[HTTP] Body: %s\n", http.getString().c_str());
+    } else {
+        Serial.printf("[HTTP] Erro: %s\n", http.errorToString(code).c_str());
+    }
+
+    http.end();
+    return code >= 200 && code < 300;
+}

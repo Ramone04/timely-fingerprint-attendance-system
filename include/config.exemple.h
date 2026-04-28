@@ -19,6 +19,7 @@
 
 // ── Laravel API ───────────────────────────────────────────────
 #define ENROLL_STATUS_URL     "https://timely.mindshaker.com/esp32/enroll-status"
+#define SCAN_RESULT_URL       "https://timely.mindshaker.com/esp32/scan-result"
 
 // ── Hardware pins ────────────────────────────────────────────
 #define FP_RX_PIN     16      // Sensor TX → GPIO16 (ESP RX2)

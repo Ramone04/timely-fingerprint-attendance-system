@@ -88,3 +88,18 @@ int enrollFinger(uint16_t slotId) {
     delay(3000);
     return 1;
 }
+
+int scanFinger(uint16_t* outConfidence) {
+    uint8_t result = finger.getImage();
+    if (result == FINGERPRINT_NOFINGER) return -1;
+    if (result != FINGERPRINT_OK)       return -1;
+
+    if (finger.image2Tz() != FINGERPRINT_OK) return -1;
+
+    result = finger.fingerSearch();
+    if (result == FINGERPRINT_NOTFOUND) return 0;
+    if (result != FINGERPRINT_OK)       return -1;
+
+    if (outConfidence) *outConfidence = finger.confidence;
+    return finger.fingerID;
+}
