@@ -11,28 +11,32 @@ static uint16_t pendingUserID = 0;
 static char pendingNome[64] = "";
 
 // Flags para controlar a chegada dos dados
-static bool gotUserID     = false;
-static bool gotNome       = false;
+static bool gotUserID = false;
+static bool gotNome = false;
 static bool enrollPending = false;
+static bool deletePending = false; // Para delete
 
 // Declaração do callback do MQTT
-void onMqttMessage(char* topic, byte* payload, unsigned int length);
+void onMqttMessage(char *topic, byte *payload, unsigned int length);
 
 // ── Reset do estado para aguardar próximo utilizador ─────────
-void resetState() {
+void resetState()
+{
+    deletePending = false;
     enrollPending = false;
-    gotUserID     = false;
-    gotNome       = false;
+    gotUserID = false;
+    gotNome = false;
     pendingUserID = 0;
     memset(pendingNome, 0, sizeof(pendingNome));
     Serial.println("Pronto — a aguardar dados do servidor...\n");
     LCDMessage("A aguardar dados", "do servidor...");
 }
 
-void setup() {
-    Serial.begin(115200);   
+void setup()
+{
+    Serial.begin(115200);
     delay(1000);
-    
+
     initLCD();
     connectWiFi();
 
@@ -42,26 +46,37 @@ void setup() {
 }
 
 // Implementação do callback — com acesso às variáveis globais
-void onMqttMessage(char* topic, byte* payload, unsigned int length) {
+void onMqttMessage(char *topic, byte *payload, unsigned int length)
+{
     char buf[128] = {};
     memcpy(buf, payload, min(length, (unsigned int)127));
 
-    if (strcmp(topic, TOPIC_ENROLL_USERID) == 0) {
+    if (strcmp(topic, TOPIC_ENROLL_USERID) == 0)
+    {
         pendingUserID = (uint16_t)atoi(buf);
         gotUserID = true;
         Serial.printf("UserID recebido: %d\n", pendingUserID);
     }
-    else if (strcmp(topic, TOPIC_ENROLL_NOME) == 0) {
+    else if (strcmp(topic, TOPIC_ENROLL_NOME) == 0)
+    {
         strncpy(pendingNome, buf, sizeof(pendingNome) - 1);
         gotNome = true;
         Serial.printf("Nome recebido: %s\n", pendingNome);
     }
+    else if (strcmp(topic, TOPIC_DELETE_USERID) == 0)
+    {
+        pendingUserID = (uint16_t)atoi(buf);
+        deletePending = true;
 
-    if (gotUserID && gotNome) {
+        Serial.printf("Delete pedido para ID: %d\n", pendingUserID);
+        LCDMessage("Delete pedido", ("ID: " + String(pendingUserID)).c_str());
+    }
+    if (gotUserID && gotNome)
+    {
         enrollPending = true;
         Serial.println("Dados completos — pronto para enroll");
         LCDMessage("Dados recebidos", "");
-        LCDMessage(("Nome: " + String(pendingNome)).c_str(), (  "ID: " + String(pendingUserID)).c_str());
+        LCDMessage(("Nome: " + String(pendingNome)).c_str(), ("ID: " + String(pendingUserID)).c_str());
     }
 }
 
@@ -71,7 +86,32 @@ void loop()
     connectWiFi();
     mqttLoop();
 
-    if(!enrollPending) return;
+    // Se for um pedido de delete, processa imediatamente (sem esperar por nome)
+    if (deletePending)
+    {
+        Serial.printf("A apagar ID=%d\n", pendingUserID);
+        LCDMessage("A apagar...", "");
+
+        int result = deleteFinger(pendingUserID);
+
+        if (result == 1)
+        {
+            Serial.println("Delete bem-sucedido!");
+            sendDeleteStatus(pendingUserID, 1);
+        }
+        else
+        {
+            Serial.println("Delete falhou.");
+            sendDeleteStatus(pendingUserID, 0);
+        }
+
+        delay(3000);
+        resetState();
+        return;
+    }
+
+    if (!enrollPending)
+        return;
 
     // ── Dados recebidos — iniciar enroll ─────────────────────
     Serial.printf("A registar: ID=%d Nome=%s\n", pendingUserID, pendingNome);
@@ -82,16 +122,21 @@ void loop()
     int result = enrollFinger(pendingUserID);
 
     // ── Resultado ────────────────────────────────────────────
-    if (result == 1) {
+    if (result == 1)
+    {
         Serial.println("Enroll bem-sucedido!");
         LCDMessage("Enroll", "bem-sucedido!");
-        if (!sendEnrollStatus(pendingUserID, 1)) {
+        if (!sendEnrollStatus(pendingUserID, 1))
+        {
             Serial.println("Falha ao enviar status HTTP (enroll sucesso) — sem retry automático.");
         }
-    } else {
+    }
+    else
+    {
         Serial.println("Enroll falhou.");
         LCDMessage("Enroll", "falhou.");
-        if (!sendEnrollStatus(pendingUserID, 0)) {
+        if (!sendEnrollStatus(pendingUserID, 0))
+        {
             Serial.println("Falha ao enviar status HTTP (enroll falha) — sem retry automático.");
         }
     }

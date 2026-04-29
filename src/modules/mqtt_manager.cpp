@@ -23,6 +23,7 @@ bool mqttConnect() {
     if (mqttClient.connect(MQTT_CLIENT, MQTT_USER, MQTT_PASS)) {
         mqttClient.subscribe(TOPIC_ENROLL_USERID);
         mqttClient.subscribe(TOPIC_ENROLL_NOME);
+        mqttClient.subscribe(TOPIC_DELETE_USERID);
         return true;
     }
 

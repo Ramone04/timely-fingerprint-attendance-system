@@ -88,3 +88,18 @@ int enrollFinger(uint16_t slotId) {
     delay(3000);
     return 1;
 }
+
+// Apaga a impressão digital do slot especificado
+int deleteFinger(uint16_t slotId) {
+    uint8_t result = finger.deleteModel(slotId);
+
+    if (result == FINGERPRINT_OK) {
+        Serial.println("Fingerprint apagada com sucesso");
+        LCDMessage("Fingerprint apagada", "");
+        return 1;
+    } else {
+        Serial.println("Erro ao apagar fingerprint");
+        LCDMessage("Erro ao apagar", "");
+        return 0;
+    }
+}

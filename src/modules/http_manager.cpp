@@ -17,6 +17,8 @@ static void initHttpClient() {
     httpClientInitialized = true;
 }
 
+// Envia para o backend o resultado do enroll: status 1=sucesso, 0=falha.
+// Retorna true apenas se a API responder com HTTP 2xx.
 bool sendEnrollStatus(uint16_t userId, uint8_t status) {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[HTTP] WiFi não ligado");
@@ -38,6 +40,44 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status) {
         "{\"user_id\":%u,\"status\":%u}", userId, status);
 
     Serial.printf("[HTTP] POST %s\n", ENROLL_STATUS_URL);
+    Serial.printf("[HTTP] Body: %s\n", payload);
+
+    int code = http.POST(payload);
+
+    if (code > 0) {
+        Serial.printf("[HTTP] Resposta: %d\n", code);
+        Serial.printf("[HTTP] Body: %s\n", http.getString().c_str());
+    } else {
+        Serial.printf("[HTTP] Erro: %s\n", http.errorToString(code).c_str());
+    }
+
+    http.end();
+    return code >= 200 && code < 300;
+}
+
+// Envia para o backend o resultado da eliminação: status 1=sucesso, 0=falha.
+// Retorna true apenas se a API responder com HTTP 2xx.
+bool sendDeleteStatus(uint16_t userId, uint8_t status) {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("[HTTP] WiFi não ligado");
+        return false;
+    }
+
+    initHttpClient();
+
+    HTTPClient http;
+    if (!http.begin(httpClient, DELETE_STATUS_URL)) {
+        Serial.println("[HTTP] Falha ao iniciar ligação");
+        return false;
+    }
+
+    http.addHeader("Content-Type", "application/json");
+
+    char payload[64];
+    snprintf(payload, sizeof(payload),
+        "{\"user_id\":%u,\"status\":%u}", userId, status);
+
+    Serial.printf("[HTTP] POST %s\n", DELETE_STATUS_URL);
     Serial.printf("[HTTP] Body: %s\n", payload);
 
     int code = http.POST(payload);
