@@ -94,14 +94,18 @@ void loop()
 
         int result = deleteFinger(pendingUserID);
 
+        // ── Resultado ────────────────────────────────────────────
         if (result == 1)
         {
             Serial.println("Delete bem-sucedido!");
+            String slotMsg = "Slot: " + String(pendingUserID);
+            LCDMessage("Apagado!", slotMsg.c_str());
             sendDeleteStatus(pendingUserID, 1);
         }
         else
         {
             Serial.println("Delete falhou.");
+            LCDMessage("Delete falhou", "");
             sendDeleteStatus(pendingUserID, 0);
         }
 
