@@ -11,16 +11,20 @@ void mqttSetup(MqttCallback callback)
 {
     net.setCACert(HIVEMQ_CA_CERT);
     // net.setHandshakeTimeout(30);
-    //net.setInsecure(); // Aceita qualquer certificado (não recomendado para produção, mas simplifica o desenvolvimento)
+    // net.setInsecure(); // Aceita qualquer certificado (não recomendado para produção, mas simplifica o desenvolvimento)
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
     mqttClient.setCallback(callback);
 }
 
-bool mqttConnect() {
-    if (mqttClient.connected()) return true;
-    if (WiFi.status() != WL_CONNECTED) return false;
-    
-    if (mqttClient.connect(MQTT_CLIENT, MQTT_USER, MQTT_PASS)) {
+bool mqttConnect()
+{
+    if (mqttClient.connected())
+        return true;
+    if (WiFi.status() != WL_CONNECTED)
+        return false;
+
+    if (mqttClient.connect(MQTT_CLIENT, MQTT_USER, MQTT_PASS))
+    {
         mqttClient.subscribe(TOPIC_ENROLL_USERID);
         mqttClient.subscribe(TOPIC_ENROLL_NOME);
         mqttClient.subscribe(TOPIC_DELETE_USERID);
@@ -35,8 +39,10 @@ bool mqttConnect() {
 
 void mqttLoop()
 {
-    if (WiFi.status() != WL_CONNECTED) return;
-    if (!mqttClient.connected()) {
+    if (WiFi.status() != WL_CONNECTED)
+        return;
+    if (!mqttClient.connected())
+    {
         mqttConnect();
         return;
     }
