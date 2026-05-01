@@ -3,6 +3,7 @@
 #include "mqtt_manager.h"
 #include "config.h"
 #include <Adafruit_Fingerprint.h>
+#include "ota_manager.h"
 
 static HardwareSerial fpSerial(2);
 static Adafruit_Fingerprint finger(&fpSerial);
@@ -34,6 +35,7 @@ static uint8_t waitForFinger()
     {
         result = finger.getImage();
         mqttLoop(); // para que a ligação MQTT não caia durante a espera
+        handleOTA(); // Necessário para processar os eventos do OTA
         delay(50);
     } while (result == FINGERPRINT_NOFINGER);
     return result;
@@ -45,6 +47,7 @@ static void waitForLift()
     while (finger.getImage() != FINGERPRINT_NOFINGER)
     {
         mqttLoop(); // para que a ligação MQTT não caia durante a espera
+        handleOTA(); // Necessário para processar os eventos do OTA
         delay(100);
     }
 }

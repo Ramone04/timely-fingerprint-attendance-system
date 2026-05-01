@@ -5,6 +5,7 @@
 #include "mqtt_manager.h"
 #include "http_manager.h"
 #include "fingerprint_manager.h"
+#include "ota_manager.h"
 
 // Variáveis globais para armazenar os dados pendentes do mqtt
 static uint16_t pendingUserID = 0;
@@ -39,6 +40,9 @@ void setup()
 
     initLCD();
     connectWiFi();
+    // OTA deve ser inicializado antes do MQTT para garantir que o ESP32 pode receber updates mesmo quando o Wi-Fi estiver instável
+    initOTA(); 
+    LCDMessage("Conectado à WiFi", "OTA pronto");
 
     mqttSetup(onMqttMessage);
     initSensor();
@@ -84,6 +88,7 @@ void loop()
 {
     // Blocks here if Wi-Fi drops, and resumes only when connected again.
     connectWiFi();
+    handleOTA(); // Necessário para processar os eventos do OTA
     mqttLoop();
 
     // Se for um pedido de delete, processa imediatamente (sem esperar por nome)
@@ -109,7 +114,7 @@ void loop()
             sendDeleteStatus(pendingUserID, 0);
         }
 
-        delay(3000);
+        delay(5000);
         resetState();
         return;
     }
