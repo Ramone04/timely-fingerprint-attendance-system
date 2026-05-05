@@ -15,6 +15,14 @@ void connectWiFi()
     WiFi.disconnect(true); // ← garante limpeza do estado anterior
     delay(100);
 
+    IPAddress staticIP, gateway, subnet, dns1, dns2;
+    staticIP.fromString(STATIC_IP);
+    gateway.fromString(STATIC_GATEWAY);
+    subnet.fromString(STATIC_SUBNET);
+    dns1.fromString("8.8.8.8");
+    dns2.fromString("1.1.1.1");
+
+    WiFi.config(staticIP, gateway, subnet, dns1, dns2);
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
 
