@@ -1,10 +1,8 @@
 #include <Arduino.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
 #include <Adafruit_Fingerprint.h>
-
-// ── Hardware config ──────────────────────────────────────────
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+#include "ota_manager.h"
+#include "wifi_manager.h"
+#include "display_manager.h"
 
 HardwareSerial fpSerial(2);
 Adafruit_Fingerprint finger(&fpSerial);
@@ -20,35 +18,26 @@ enum State
 
 void lcdShow(State s, int slotId = -1, int confidence = -1)
 {
-  lcd.clear();
   switch (s)
   {
   case IDLE:
-    lcd.setCursor(0, 0);
-    lcd.print("  Place finger  ");
-    lcd.setCursor(0, 1);
-    lcd.print("  to clock in   ");
+    LCDMessage("  Place finger  ", "  to clock in   ");
     break;
 
   case SCANNING:
-    lcd.setCursor(0, 0);
-    lcd.print("   Scanning...  ");
-    lcd.setCursor(0, 1);
-    lcd.print("  Please wait   ");
+    LCDMessage("   Scanning...  ", "  Please wait   ");
     break;
 
   case MATCHED:
-    lcd.setCursor(0, 0);
-    lcd.print("  Access OK!    ");
-    lcd.setCursor(0, 1);
-    lcd.printf("  Slot #%-3d  %3d", slotId, confidence);
+  {
+    char line2[17];
+    snprintf(line2, sizeof(line2), "  Slot #%-3d  %3d", slotId, confidence);
+    LCDMessage("  Access OK!    ", line2);
+  }
     break;
 
   case FAILED:
-    lcd.setCursor(0, 0);
-    lcd.print(" Not recognised ");
-    lcd.setCursor(0, 1);
-    lcd.print("  Try again...  ");
+    LCDMessage(" Not recognised ", "  Try again...  ");
     break;
   }
 }
@@ -70,14 +59,13 @@ void setup()
 {
   Serial.begin(115200);
 
+  // ── WiFi + OTA ── adiciona estas duas linhas antes do resto
+  connectWiFi();
+  initOTA();
+
   // LCD
-  Wire.begin(21, 22);
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("  Initialising  ");
-  lcd.setCursor(0, 1);
-  lcd.print("  Please wait   ");
+  initLCD();
+  LCDMessage("  Initialising  ", "  Please wait   ");
 
   // Sensor
   fpSerial.begin(57600, SERIAL_8N1, 16, 17);
@@ -85,11 +73,7 @@ void setup()
 
   if (!finger.verifyPassword())
   {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(" Sensor error!  ");
-    lcd.setCursor(0, 1);
-    lcd.print(" Check wiring   ");
+    LCDMessage(" Sensor error!  ", " Check wiring   ");
     Serial.println("Sensor not found!");
     while (1)
       ;
@@ -104,6 +88,9 @@ void setup()
 // ── Main loop ────────────────────────────────────────────────
 void loop()
 {
+  connectWiFi();
+  handleOTA(); // Necessário para processar os eventos do OTA
+
   int result = scanFinger();
 
   if (result >= 0)
