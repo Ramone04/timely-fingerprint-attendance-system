@@ -1,12 +1,13 @@
 #pragma once
 
 #ifndef PROGMEM
+// Ensure PROGMEM is defined on platforms that do not provide it.
 #define PROGMEM
 #endif
 
-// ISRG Root X1 — Root CA do HiveMQ Cloud Free Tier
-// Fonte: https://letsencrypt.org/certs/isrgrootx1.pem
-// Válido até: 2035-06-04
+// ISRG Root X1 - Root CA for HiveMQ Cloud Free Tier.
+// Source: https://letsencrypt.org/certs/isrgrootx1.pem
+// Valid until: 2035-06-04
 
 static const char HIVEMQ_CA_CERT[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
@@ -42,5 +43,5 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 -----END CERTIFICATE-----
 )EOF";
 
-// CA usado para HTTPS da API Laravel (atualize se o backend usar outro emissor)
+// CA used for Laravel API HTTPS (update if the backend uses a different issuer).
 static const char* const LARAVEL_CA_CERT = HIVEMQ_CA_CERT;

@@ -2,10 +2,10 @@
 
 #include <Arduino.h>
 
-// Envia para o backend o resultado do enroll: status 1=sucesso, 0=falha.
-// Retorna true apenas se a API responder com HTTP 2xx.
+// Post enroll result to the backend: status 1=success, 0=failure.
+// Returns true only when the API responds with HTTP 2xx.
 bool sendEnrollStatus(uint16_t userId, uint8_t status);
 
-// Envia para o backend o resultado da eliminação: status 1=sucesso, 0=falha.
-// Retorna true apenas se a API responder com HTTP 2xx.
+// Post delete result to the backend: status 1=success, 0=failure.
+// Returns true only when the API responds with HTTP 2xx.
 bool sendDeleteStatus(uint16_t userId, uint8_t status);

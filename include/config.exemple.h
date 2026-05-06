@@ -1,28 +1,28 @@
 #pragma once
 
-// ── WiFi ────────────────────────────────────────────────────
+// WiFi credentials (example values).
 #define WIFI_SSID     "your_ssid"
 #define WIFI_PASS     "your_password"
 
-// ── HiveMQ ──────────────────────────────────────────────────
-// Port 8883 = TLS/SSL (required for HiveMQ Cloud)
-// The CA certificate (ISRG Root X1 / Let's Encrypt) is embedded in mqtt_manager.cpp
+// HiveMQ broker (TLS).
+// Port 8883 = TLS/SSL (required for HiveMQ Cloud).
+// CA certificate (ISRG Root X1 / Let's Encrypt) is defined in certificates.h.
 #define MQTT_HOST     "your-cluster.s1.eu.hivemq.cloud"
 #define MQTT_PORT     8883
 #define MQTT_USER     "ESP32"
 #define MQTT_PASS     "your_mqtt_password"
 #define MQTT_CLIENT   "ESP32_Client"
 
-// ── MQTT Topics ─────────────────────────────────────────────
+// MQTT topics used by the device.
 #define TOPIC_ENROLL_USERID   "Enroll/UserID"
 #define TOPIC_ENROLL_NOME     "Enroll/Nome"
 
-// ── Laravel API ───────────────────────────────────────────────
+// Laravel API endpoint (example).
 #define ENROLL_STATUS_URL     "https://timely.mindshaker.com/esp32/enroll-status"
 
-// ── Hardware pins ────────────────────────────────────────────
-#define FP_RX_PIN     16      // Sensor TX → GPIO16 (ESP RX2)
-#define FP_TX_PIN     17      // Sensor RX ← GPIO17 (ESP TX2)
+// Hardware pins and LCD geometry.
+#define FP_RX_PIN     16      // Sensor TX -> GPIO16 (ESP RX2)
+#define FP_TX_PIN     17      // Sensor RX <- GPIO17 (ESP TX2)
 #define FP_BAUD       57600
 
 #define LCD_SDA_PIN   21

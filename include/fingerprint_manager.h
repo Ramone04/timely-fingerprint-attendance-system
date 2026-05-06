@@ -1,11 +1,13 @@
 #pragma once
 #include <stdint.h>
 
+// Fingerprint manager public API.
 bool initSensor();
-// Retorna: true se o sensor foi encontrado
+// Returns true when the sensor responds to the password check.
 
 int enrollFinger(uint16_t slotId);
-// Retorna: 1 se sucesso, 0 se falhou (mismatch ou erro)
+// Returns 1 on success, 0 on failure (mismatch or sensor error).
+// slotId is the template slot index used by the sensor.
 
 int deleteFinger(uint16_t slotId);
-// Retorna: 1 se sucesso, 0 se falhou (slot vazio ou erro)
+// Returns 1 on success, 0 on failure (empty slot or sensor error).
