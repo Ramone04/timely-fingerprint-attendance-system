@@ -5,6 +5,20 @@
 
 LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
 
+static String normalizeLine(const char *text)
+{
+    String line = text ? String(text) : String("");
+    if (line.length() > LCD_COLS)
+    {
+        line = line.substring(0, LCD_COLS);
+    }
+    while (line.length() < LCD_COLS)
+    {
+        line += ' ';
+    }
+    return line;
+}
+
 void initLCD()
 {
     Wire.begin(LCD_SDA_PIN, LCD_SCL_PIN);
@@ -17,7 +31,7 @@ void LCDMessage(const char *line1, const char *line2)
 {
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print(line1);
+    lcd.print(normalizeLine(line1));
     lcd.setCursor(0, 1);
-    lcd.print(line2);
+    lcd.print(normalizeLine(line2));
 }
