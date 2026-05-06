@@ -42,7 +42,7 @@ void setup()
     connectWiFi();
     // OTA deve ser inicializado antes do MQTT para garantir que o ESP32 pode receber updates mesmo quando o Wi-Fi estiver instável
     initOTA(); 
-    LCDMessage("Conectado à WiFi", "OTA pronto");
+    LCDMessage("WiFi ligado", "OTA pronto");
 
     mqttSetup(onMqttMessage);
     initSensor();
@@ -125,7 +125,7 @@ void loop()
     // ── Dados recebidos — iniciar enroll ─────────────────────
     Serial.printf("A registar: ID=%d Nome=%s\n", pendingUserID, pendingNome);
     LCDMessage("A iniciar registo", pendingNome);
-    delay(1000);
+    delay(2000);
 
     // Leituras do sensor e criação do modelo
     int result = enrollFinger(pendingUserID);
