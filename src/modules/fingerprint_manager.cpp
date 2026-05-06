@@ -1,3 +1,5 @@
+// Fingerprint manager: initializes the sensor, runs enroll flow, and deletes templates.
+// Keeps MQTT and OTA alive during sensor waits to avoid timeouts.
 #include "fingerprint_manager.h"
 #include "display_manager.h"
 #include "mqtt_manager.h"
@@ -5,15 +7,20 @@
 #include <Adafruit_Fingerprint.h>
 #include "ota_manager.h"
 
+// Dedicated UART and Adafruit driver instance
 static HardwareSerial fpSerial(2);
 static Adafruit_Fingerprint finger(&fpSerial);
 
+// Initialize UART and verify the sensor responds.
+// Returns true when the sensor passes the password check.
 bool initSensor()
 {
+    // Open UART and initialize the sensor driver
     fpSerial.begin(FP_BAUD, SERIAL_8N1, FP_RX_PIN, FP_TX_PIN);
     finger.begin(FP_BAUD);
-    delay(1000); // Aguarda o sensor inicializar
+    delay(1000); // Allow sensor boot time
 
+    // verifyPassword() confirms communication with the sensor
     if (finger.verifyPassword())
     {
         LCDMessage("Sensor OK", "");
@@ -21,44 +28,51 @@ bool initSensor()
     }
     else
     {
-        LCDMessage("Sensor Error", "Check connections");
+        LCDMessage("Sensor Error", "Check wiring");
         return false;
     }
 }
 
-// Aguarda que o dedo seja colocado e captura imagem
-// Retorna FINGERPRINT_OK ou código de erro
+// Wait for a finger to be placed and capture the image.
+// Returns FINGERPRINT_OK or a sensor error code.
+// Polls the sensor while keeping MQTT/OTA handlers alive.
 static uint8_t waitForFinger()
 {
     uint8_t result;
     do
     {
+        // Poll the sensor and yield to networking tasks.
         result = finger.getImage();
-        mqttLoop(); // para que a ligação MQTT não caia durante a espera
-        handleOTA(); // Necessário para processar os eventos do OTA
+        mqttLoop(); // Keep MQTT session alive while waiting
+        handleOTA(); // Process OTA events during long waits
         delay(50);
     } while (result == FINGERPRINT_NOFINGER);
     return result;
 }
 
-// Aguarda que o dedo seja removido
+// Wait until the finger is removed from the sensor.
+// Polls the sensor while keeping MQTT/OTA handlers alive.
 static void waitForLift()
 {
     while (finger.getImage() != FINGERPRINT_NOFINGER)
     {
-        mqttLoop(); // para que a ligação MQTT não caia durante a espera
-        handleOTA(); // Necessário para processar os eventos do OTA
+        // Poll the sensor and yield to networking tasks.
+        mqttLoop(); // Keep MQTT session alive while waiting
+        handleOTA(); // Process OTA events during long waits
         delay(100);
     }
 }
 
+// Enroll a finger into the given slot.
+// Returns 1 on success, 0 on failure.
 int enrollFinger(uint16_t slotId)
 {
     Serial.printf("Enroll no slot #%d\n", slotId);
 
-    // ── Leitura 1 ────────────────────────────────────────────
+    // --- Read 1 ------------------------------------------------
     LCDMessage("Coloca o dedo...", "");
 
+    // Abort early on any capture or conversion error.
     if (waitForFinger() != FINGERPRINT_OK)
         return 0;
     if (finger.image2Tz(1) != FINGERPRINT_OK)
@@ -68,15 +82,17 @@ int enrollFinger(uint16_t slotId)
     waitForLift();
     delay(500);
 
-    // ── Leitura 2 ────────────────────────────────────────────
-    LCDMessage("Coloca o mesmo dedo...", "");
+    // --- Read 2 ------------------------------------------------
+    LCDMessage("Coloca o mesmo", "dedo...");
 
+    // Abort early on any capture or conversion error.
     if (waitForFinger() != FINGERPRINT_OK)
         return 0;
     if (finger.image2Tz(2) != FINGERPRINT_OK)
         return 0;
 
-    // Verifica match entre leitura 1 e 2
+    // Compare both captures and build a template.
+    // A mismatch means the two reads do not match the same finger.
     if (finger.createModel() != FINGERPRINT_OK)
     {
         Serial.println("Leituras não coincidem");
@@ -88,7 +104,8 @@ int enrollFinger(uint16_t slotId)
     waitForLift();
     delay(500);
 
-    // ── Guardar no slot ──────────────────────────────────────
+    // --- Store template in the selected slot -----------------
+    // Fail if the flash write or slot is not available.
     if (finger.storeModel(slotId) != FINGERPRINT_OK)
     {
         Serial.println("Erro ao guardar no slot");
@@ -98,12 +115,13 @@ int enrollFinger(uint16_t slotId)
     }
 
     Serial.printf("Fingerprint guardada no slot #%d\n", slotId);
-    LCDMessage("Fingerprint guardada", ("no slot: " + String(slotId)).c_str());
+    LCDMessage("Dedo guardado", ("no slot: " + String(slotId)).c_str());
     delay(3000);
     return 1;
 }
 
-// Apaga a impressão digital do slot especificado
+// Delete the template stored in the specified slot.
+// Returns 1 on success, 0 on failure.
 int deleteFinger(uint16_t slotId)
 {
     uint8_t result = finger.deleteModel(slotId);

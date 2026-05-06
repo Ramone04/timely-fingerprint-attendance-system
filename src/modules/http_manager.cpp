@@ -1,3 +1,4 @@
+// HTTP manager: posts enroll/delete status over TLS.
 #include "http_manager.h"
 #include "config.h"
 #include "certificates.h"
@@ -5,12 +6,13 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
-// ← static — criado uma vez, vive durante toda a execução
-// Evita fragmentação do heap do mbedTLS entre chamadas
+// Static TLS client created once for the lifetime of the program.
+// Reuse avoids mbedTLS heap fragmentation between requests.
 static WiFiClientSecure httpClient;
 static bool httpClientInitialized = false;
 
-// Inicializa o cliente TLS uma única vez
+// Initialize the TLS client once and cache the CA certificate.
+// Call before any HTTP requests to ensure TLS is ready.
 static void initHttpClient()
 {
     if (httpClientInitialized)
@@ -19,9 +21,11 @@ static void initHttpClient()
     httpClientInitialized = true;
 }
 
-// Função interna — não declarada no .h, não acessível fora deste ficheiro
+// File-local helper; not exposed in the header.
+// Builds and sends a small JSON payload and returns true for 2xx responses.
 static bool postStatus(const char *url, uint16_t userId, uint8_t status)
 {
+    // Abort early if there is no network connection.
     if (WiFi.status() != WL_CONNECTED)
     {
         Serial.println("[HTTP] WiFi não ligado");
@@ -30,6 +34,7 @@ static bool postStatus(const char *url, uint16_t userId, uint8_t status)
 
     initHttpClient();
 
+    // Use a short-lived HTTPClient for each POST
     HTTPClient http;
     if (!http.begin(httpClient, url))
     {
@@ -37,6 +42,7 @@ static bool postStatus(const char *url, uint16_t userId, uint8_t status)
         return false;
     }
 
+    // JSON payload with user id and status code.
     http.addHeader("Content-Type", "application/json");
 
     char payload[64];
@@ -45,6 +51,7 @@ static bool postStatus(const char *url, uint16_t userId, uint8_t status)
 
     Serial.printf("[HTTP] POST %s — Body: %s\n", url, payload);
 
+    // Send request and capture the HTTP response code.
     int code = http.POST(payload);
 
     if (code > 0)
@@ -56,16 +63,19 @@ static bool postStatus(const char *url, uint16_t userId, uint8_t status)
         Serial.printf("[HTTP] Erro: %s\n", http.errorToString(code).c_str());
     }
 
+    // Release resources (socket and buffers).
     http.end();
-    return code >= 200 && code < 300;
+    return code >= 200 && code < 300; // Success for any 2xx response
 }
 
-// As funções públicas
+// Public API wrappers
+// Post enroll status to the server.
 bool sendEnrollStatus(uint16_t userId, uint8_t status)
 {
     return postStatus(ENROLL_STATUS_URL, userId, status);
 }
 
+// Post delete status to the server.
 bool sendDeleteStatus(uint16_t userId, uint8_t status)
 {
     return postStatus(DELETE_STATUS_URL, userId, status);
