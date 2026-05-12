@@ -68,6 +68,53 @@ static bool postStatus(const char *url, uint16_t userId, uint8_t status)
     return code >= 200 && code < 300; // Success for any 2xx response
 }
 
+
+static bool postPonto(const char *url, uint16_t userId)
+{
+    // Abort early if there is no network connection.
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        Serial.println("[HTTP] WiFi não ligado");
+        return false;
+    }
+
+    initHttpClient();
+
+    // Use a short-lived HTTPClient for each POST
+    HTTPClient http;
+    if (!http.begin(httpClient, url))
+    {
+        Serial.println("[HTTP] Falha ao iniciar ligação");
+        return false;
+    }
+
+    // JSON payload with user id and status code.
+    http.addHeader("Content-Type", "application/json");
+
+    char payload[64];
+    snprintf(payload, sizeof(payload),
+             "{\"user_id\":%u}", userId);
+
+    Serial.printf("[HTTP] POST %s — Body: %s\n", url, payload);
+
+    // Send request and capture the HTTP response code.
+    int code = http.POST(payload);
+
+    if (code > 0)
+    {
+        Serial.printf("[HTTP] Resposta: %d — %s\n", code, http.getString().c_str());
+    }
+    else
+    {
+        Serial.printf("[HTTP] Erro: %s\n", http.errorToString(code).c_str());
+    }
+
+    // Release resources (socket and buffers).
+    http.end();
+    return code >= 200 && code < 300; // Success for any 2xx response
+}
+
+
 // Public API wrappers
 // Post enroll status to the server.
 bool sendEnrollStatus(uint16_t userId, uint8_t status)
@@ -80,3 +127,8 @@ bool sendDeleteStatus(uint16_t userId, uint8_t status)
 {
     return postStatus(DELETE_STATUS_URL, userId, status);
 }
+
+bool sendPonto(uint16_t userId)
+{
+    return postPonto(PONTO_URL, userId); 
+}   
