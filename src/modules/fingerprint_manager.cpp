@@ -54,6 +54,7 @@ static uint8_t waitForFinger()
 // Polls the sensor while keeping MQTT/OTA handlers alive.
 static void waitForLift()
 {
+    
     while (finger.getImage() != FINGERPRINT_NOFINGER)
     {
         // Poll the sensor and yield to networking tasks.
@@ -132,4 +133,17 @@ int deleteFinger(uint16_t slotId)
     }
     Serial.printf("Erro ao apagar slot #%d — code: %d\n", slotId, result);
     return 0;
+}
+
+// ── Scan logic ───────────────────────────────────────────────
+// 
+int scanFinger()
+{
+  if (finger.getImage() != FINGERPRINT_OK) // No finger or sensor error
+    return -1;
+  if (finger.image2Tz() != FINGERPRINT_OK) // Image capture failed or bad image
+    return -2;
+  if (finger.fingerSearch() != FINGERPRINT_OK) // No match found or sensor error
+    return -3;
+  return finger.fingerID;
 }
