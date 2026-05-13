@@ -68,7 +68,6 @@ static bool postStatus(const char *url, uint16_t userId, uint8_t status)
     return code >= 200 && code < 300; // Success for any 2xx response
 }
 
-
 static bool postPonto(const char *url, uint16_t userId)
 {
     // Abort early if there is no network connection.
@@ -82,6 +81,8 @@ static bool postPonto(const char *url, uint16_t userId)
 
     // Use a short-lived HTTPClient for each POST
     HTTPClient http;
+    http.setReuse(true);
+    
     if (!http.begin(httpClient, url))
     {
         Serial.println("[HTTP] Falha ao iniciar ligação");
@@ -90,7 +91,7 @@ static bool postPonto(const char *url, uint16_t userId)
 
     // JSON payload with user id and status code.
     http.addHeader("Content-Type", "application/json");
-
+    http.addHeader("Connection", "keep-alive");
     char payload[64];
     snprintf(payload, sizeof(payload),
              "{\"user_id\":%u}", userId);
@@ -114,7 +115,6 @@ static bool postPonto(const char *url, uint16_t userId)
     return code >= 200 && code < 300; // Success for any 2xx response
 }
 
-
 // Public API wrappers
 // Post enroll status to the server.
 bool sendEnrollStatus(uint16_t userId, uint8_t status)
@@ -130,5 +130,5 @@ bool sendDeleteStatus(uint16_t userId, uint8_t status)
 
 bool sendPonto(uint16_t userId)
 {
-    return postPonto(PONTO_URL, userId); 
-}   
+    return postPonto(PONTO_URL, userId);
+}

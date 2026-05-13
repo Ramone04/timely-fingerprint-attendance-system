@@ -137,13 +137,14 @@ int deleteFinger(uint16_t slotId)
 
 // ── Scan logic ───────────────────────────────────────────────
 // 
-int scanFinger()
-{
-  if (finger.getImage() != FINGERPRINT_OK) // No finger or sensor error
-    return -1;
-  if (finger.image2Tz() != FINGERPRINT_OK) // Image capture failed or bad image
-    return -2;
-  if (finger.fingerSearch() != FINGERPRINT_OK) // No match found or sensor error
-    return -3;
-  return finger.fingerID;
+int scanFinger() {
+    if (finger.getImage() != FINGERPRINT_OK) return -1;
+    if (finger.image2Tz() != FINGERPRINT_OK) return -2;
+
+    // Fast search 
+    if (finger.fingerFastSearch() != FINGERPRINT_OK) return -3;
+
+    
+    //if (finger.fingerSearch() != FINGERPRINT_OK) return -3;
+    return finger.fingerID;
 }
