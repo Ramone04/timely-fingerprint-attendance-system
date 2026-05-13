@@ -5,47 +5,99 @@
 #include "http_manager.h"
 #include "fingerprint_manager.h"
 #include "ota_manager.h"
+#include "user_storage.h"
 
-void setup() {
+// Returns:
+enum ScanState
+{
+    IDLE,
+    SHOWING_RESULT,
+    WAITING_LIFT
+};
+static ScanState state = IDLE;
+static unsigned long stateChangedAt = 0;
+static const unsigned long RESULT_DURATION = 3000;
+
+void setup()
+{
     Serial.begin(115200);
     delay(1000);
 
     initLCD();
     connectWiFi();
     initOTA();
-    if (!initSensor()) {
+    if (!initSensor())
+    {
         LCDMessage("Sensor erro!", "Verifica wiring");
-        while(1);
+        while (1)
+            ;
     }
     LCDMessage("Coloca o dedo", "no sensor");
-    //LCDMessage("Teste de ", "upload");
 }
 
-void loop() {
-    handleOTA();     
+void loop()
+{
+    handleOTA();
     connectWiFi();
 
-    int result = scanFinger();
+    switch (state)
+    {
+    case IDLE:
+    {
+        int result = scanFinger();
 
-    if (result >= 0) {
-        Serial.printf("Match! Slot #%d\n", result);
-        char line2[17];
-        snprintf(line2, sizeof(line2), "User ID: %d", result);
+        if (result >= 0)
+        {
+            // Feedback imediato — antes do HTTP
+            LCDMessage("A ler...", "Aguarde");
+            Serial.printf("Match! Slot #%d\n", result);
 
-        if (sendPonto(result)) {
-            Serial.println("Ponto registado com sucesso");
-            LCDMessage("Ponto registado!", line2);
-        } else {
-            Serial.println("Falha ao registar ponto");
-            LCDMessage("Erro ao registar", line2);
+            char userName[32];
+            loadUser(result, userName, sizeof(userName));
+
+            if (sendPonto(result))
+            {
+                LCDMessage("Ponto registado!", userName);
+            }
+            else
+            {
+                LCDMessage("Erro ao registar", userName);
+            }
+
+            //Teste HTTP sem retry automático — o resultado é mostrado mesmo que a ligação falhe, para feedback imediato ao utilizador
+            // LCDMessage("Ponto registado!", userName);
+            // sendPonto(result);
+
+            stateChangedAt = millis();
+            state = SHOWING_RESULT;
         }
-        delay(3000);
-        LCDMessage("Coloca o dedo", "no sensor");
+        else if (result == -3)
+        {
+            LCDMessage("Nao reconhecido", "Tenta novamente");
+            stateChangedAt = millis();
+            state = SHOWING_RESULT;
+        }
+        // -1 e -2 → ignorados, loop continua
+        break;
+    }
 
-    } else if (result == -3) {
-        Serial.println("Dedo não reconhecido");
-        LCDMessage("Nao reconhecido", "Tenta novamente");
-        delay(2000);
-        LCDMessage("Coloca o dedo", "no sensor");
-    } 
+    case SHOWING_RESULT:
+    {
+        if (millis() - stateChangedAt >= RESULT_DURATION)
+        {
+            state = WAITING_LIFT;
+        }
+        break;
+    }
+
+    case WAITING_LIFT:
+    {
+        if (scanFinger() == -1)
+        {
+            LCDMessage("Coloca o dedo", "no sensor");
+            state = IDLE;
+        }
+        break;
+    }
+    }
 }
