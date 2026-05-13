@@ -6,6 +6,7 @@
 #include "http_manager.h"
 #include "fingerprint_manager.h"
 #include "ota_manager.h"
+#include "user_storage.h"
 
 // Pending data collected via MQTT (ID and name arrive on separate topics).
 static uint16_t pendingUserID = 0;
@@ -118,6 +119,7 @@ void loop()
         {
             Serial.println("Delete bem-sucedido!");
             String slotMsg = "Slot: " + String(pendingUserID);
+            deleteUser(pendingUserID); // Remove user data from storage
             LCDMessage("Apagado!", slotMsg.c_str());
             sendDeleteStatus(pendingUserID, 1);
         }
@@ -151,6 +153,7 @@ void loop()
     {
         Serial.println("Enroll bem-sucedido!");
         LCDMessage("Enroll", "bem-sucedido!");
+        saveUser(pendingUserID, pendingNome);
         if (!sendEnrollStatus(pendingUserID, 1))
         {
             Serial.println("Falha ao enviar status HTTP (enroll sucesso) — sem retry automático.");
