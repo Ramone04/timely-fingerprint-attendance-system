@@ -43,7 +43,7 @@ static uint8_t waitForFinger()
     {
         // Poll the sensor and yield to networking tasks.
         result = finger.getImage();
-        mqttLoop(); // Keep MQTT session alive while waiting
+        mqttLoop();  // Keep MQTT session alive while waiting
         handleOTA(); // Process OTA events during long waits
         delay(50);
     } while (result == FINGERPRINT_NOFINGER);
@@ -54,11 +54,11 @@ static uint8_t waitForFinger()
 // Polls the sensor while keeping MQTT/OTA handlers alive.
 static void waitForLift()
 {
-    
+
     while (finger.getImage() != FINGERPRINT_NOFINGER)
     {
         // Poll the sensor and yield to networking tasks.
-        mqttLoop(); // Keep MQTT session alive while waiting
+        mqttLoop();  // Keep MQTT session alive while waiting
         handleOTA(); // Process OTA events during long waits
         delay(100);
     }
@@ -66,58 +66,70 @@ static void waitForLift()
 
 // Enroll a finger into the given slot.
 // Returns 1 on success, 0 on failure.
+// fingerprint_manager.cpp
+
 int enrollFinger(uint16_t slotId)
 {
     Serial.printf("Enroll no slot #%d\n", slotId);
 
-    // --- Read 1 ------------------------------------------------
-    LCDMessage("Coloca o dedo...", "");
+    // -- Read 1 -----------------------------------------------
+    LCDMessage("Coloca o dedo", "Leitura 1/2");
 
-    // Abort early on any capture or conversion error.
     if (waitForFinger() != FINGERPRINT_OK)
         return 0;
     if (finger.image2Tz(1) != FINGERPRINT_OK)
+    {
+        Serial.println("image2Tz(1) falhou");
         return 0;
+    }
 
+    // Immediately prompt to lift the finger
     LCDMessage("Levanta o dedo", "");
     waitForLift();
-    delay(500);
+    delay(300); // Short pause to let the sensor stabilize
 
-    // --- Read 2 ------------------------------------------------
-    LCDMessage("Coloca o mesmo", "dedo...");
+    // -- Read 2 -----------------------------------------------
+    LCDMessage("Coloca o mesmo", "dedo. Leitura 2/2");
 
-    // Abort early on any capture or conversion error.
     if (waitForFinger() != FINGERPRINT_OK)
         return 0;
     if (finger.image2Tz(2) != FINGERPRINT_OK)
-        return 0;
-
-    // Compare both captures and build a template.
-    // A mismatch means the two reads do not match the same finger.
-    if (finger.createModel() != FINGERPRINT_OK)
     {
-        Serial.println("Leituras não coincidem");
-        LCDMessage("Leituras não", "coincidem");
+        Serial.println("image2Tz(2) falhou");
         return 0;
     }
 
+    // Ask to lift the finger BEFORE createModel
     LCDMessage("Levanta o dedo", "");
     waitForLift();
-    delay(500);
 
-    // --- Store template in the selected slot -----------------
-    // Fail if the flash write or slot is not available.
+    // Now process the model
+    LCDMessage("A processar...", "");
+    if (finger.createModel() != FINGERPRINT_OK)
+    {
+        Serial.println("Leituras nao coincidem");
+        LCDMessage("Leituras nao", "coincidem");
+        return 0;
+    }
+
+    // -- Store in slot -----------------------------------------
     if (finger.storeModel(slotId) != FINGERPRINT_OK)
     {
         Serial.println("Erro ao guardar no slot");
-        LCDMessage("Erro ao guardar", ("no slot: " + String(slotId)).c_str());
-        delay(3000);
+
+        char line2[17];
+        snprintf(line2, sizeof(line2), "Slot: %u", slotId);
+        LCDMessage("Erro ao guardar", line2);
+        delay(2000);
         return 0;
     }
 
-    Serial.printf("Fingerprint guardada no slot #%d\n", slotId);
-    LCDMessage("Dedo guardado", ("no slot: " + String(slotId)).c_str());
-    delay(3000);
+    Serial.printf("Fingerprint guardada no slot #%u\n", slotId);
+
+    char line2[17];
+    snprintf(line2, sizeof(line2), "Slot: %u", slotId);
+    LCDMessage("Dedo guardado", line2);
+    delay(2000);
     return 1;
 }
 
@@ -135,16 +147,19 @@ int deleteFinger(uint16_t slotId)
     return 0;
 }
 
-// ── Scan logic ───────────────────────────────────────────────
-// 
-int scanFinger() {
-    if (finger.getImage() != FINGERPRINT_OK) return -1;
-    if (finger.image2Tz() != FINGERPRINT_OK) return -2;
+// -- Scan logic -----------------------------------------------
+//
+int scanFinger()
+{
+    if (finger.getImage() != FINGERPRINT_OK)
+        return -1;
+    if (finger.image2Tz() != FINGERPRINT_OK)
+        return -2;
 
-    // Fast search 
-    if (finger.fingerFastSearch() != FINGERPRINT_OK) return -3;
+    // Fast search
+    if (finger.fingerFastSearch() != FINGERPRINT_OK)
+        return -3;
 
-    
-    //if (finger.fingerSearch() != FINGERPRINT_OK) return -3;
+    // if (finger.fingerSearch() != FINGERPRINT_OK) return -3;
     return finger.fingerID;
 }
