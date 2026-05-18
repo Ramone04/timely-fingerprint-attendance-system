@@ -3,6 +3,7 @@
 #include "config.h"
 #include <display_manager.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 
 // Connect to the configured SSID using a static IP.
 // Returns immediately when already connected.
@@ -33,12 +34,22 @@ void connectWiFi()
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
 
-    // Block until the connection is established
-    while (WiFi.status() != WL_CONNECTED)
-    {
+    // Wait for connection with a timeout. If it fails, restart the ESP to retry.
+    unsigned long start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 30000) {
         delay(500);
         Serial.print(".");
     }
+
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("\nWiFi timeout — a reiniciar ESP32");
+        delay(1000);
+        ESP.restart();
+    }
+
+    // Disable Wi-Fi power saving and set max transmit power for better stability and range.
+    esp_wifi_set_ps(WIFI_PS_NONE);
+    WiFi.setTxPower(WIFI_POWER_19_5dBm);
 
     // Wait for DNS to be available before returning
     // Uses a test resolve and retries if it fails
