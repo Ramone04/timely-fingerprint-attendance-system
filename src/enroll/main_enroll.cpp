@@ -75,6 +75,7 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
     else if (strcmp(topic, TOPIC_ENROLL_NOME) == 0)
     {
         strncpy(pendingNome, buf, sizeof(pendingNome) - 1);
+        pendingNome[sizeof(pendingNome) - 1] = '\0';
         gotNome = true;
         Serial.printf("Nome recebido: %s\n", pendingNome);
     }
@@ -85,7 +86,9 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
         deletePending = true;
 
         Serial.printf("Delete pedido para ID: %d\n", pendingUserID);
-        LCDMessage("Delete pedido", ("ID: " + String(pendingUserID)).c_str());
+        char line2[17];
+        snprintf(line2, sizeof(line2), "ID: %u", pendingUserID);
+        LCDMessage("Delete pedido", line2);
     }
 
     // When both ID and name are present, we can start the enroll flow.
@@ -93,8 +96,11 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
     {
         enrollPending = true;
         Serial.println("Dados completos — pronto para enroll");
-        LCDMessage("Dados recebidos", "");
-        LCDMessage(("Nome: " + String(pendingNome)).c_str(), ("ID: " + String(pendingUserID)).c_str());
+        char line1[17];
+        char line2[17];
+        snprintf(line1, sizeof(line1), "Nome: %s", pendingNome);
+        snprintf(line2, sizeof(line2), "ID: %u", pendingUserID);
+        LCDMessage(line1, line2);
     }
 }
 
@@ -118,9 +124,12 @@ void loop()
         if (result == 1)
         {
             Serial.println("Delete bem-sucedido!");
-            String slotMsg = "Slot: " + String(pendingUserID);
-            deleteUser(pendingUserID); // Remove user data from storage
-            LCDMessage("Apagado!", slotMsg.c_str());
+
+            char line2[17];
+            snprintf(line2, sizeof(line2), "Slot: %u", pendingUserID);
+
+            deleteUser(pendingUserID);
+            LCDMessage("Apagado!", line2);
             sendDeleteStatus(pendingUserID, 1);
         }
         else
