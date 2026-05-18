@@ -7,7 +7,7 @@
 
 // TLS socket used by PubSubClient
 static WiFiClientSecure net;
-PubSubClient mqttClient(net);
+static PubSubClient mqttClient(net);
 
 // Configure TLS and broker settings; call once during setup.
 void mqttSetup(MqttCallback callback)
