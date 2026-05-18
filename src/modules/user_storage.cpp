@@ -4,11 +4,13 @@
 
 Preferences prefs;
 
-static void buildKey(uint16_t slotId, char* key, size_t keyLen) {
+static void buildKey(uint16_t slotId, char *key, size_t keyLen)
+{
     snprintf(key, keyLen, "u_%u", slotId);
 }
 
-bool saveUser(uint16_t slotId, const char* name) {
+bool saveUser(uint16_t slotId, const char *name)
+{
     char key[16];
     buildKey(slotId, key, sizeof(key));
 
@@ -20,7 +22,8 @@ bool saveUser(uint16_t slotId, const char* name) {
     return result > 0;
 }
 
-bool loadUser(uint16_t slotId, char* nameOut, size_t maxLen) {
+bool loadUser(uint16_t slotId, char *nameOut, size_t maxLen)
+{
     char key[16];
     buildKey(slotId, key, sizeof(key));
 
@@ -29,11 +32,14 @@ bool loadUser(uint16_t slotId, char* nameOut, size_t maxLen) {
 
     Serial.printf("[NVS] loadUser key='%s' exists=%d\n", key, exists);
 
-    if (exists) {
+    if (exists)
+    {
         String value = prefs.getString(key);
         strncpy(nameOut, value.c_str(), maxLen - 1);
         Serial.printf("[NVS] loadUser value='%s'\n", value.c_str());
-    } else {
+    }
+    else
+    {
         strncpy(nameOut, "Desconhecido", maxLen - 1);
     }
     nameOut[maxLen - 1] = '\0';
@@ -45,8 +51,13 @@ bool deleteUser(uint16_t slotId)
 {
     // Construct the key for the given slot ID (e.g., "u_3" for slot 3)
     char key[16];
-    snprintf(key, sizeof(key), "u_%u", slotId);
+    buildKey(slotId, key, sizeof(key));
 
-    // Remove the user data under the constructed key
-    return prefs.remove(key);
+    // Remove the key-value pair from NVS
+    prefs.begin("users", false);
+    bool result = prefs.remove(key);
+    prefs.end();
+
+    Serial.printf("[NVS] deleteUser key='%s' result=%d\n", key, result);
+    return result;
 }
