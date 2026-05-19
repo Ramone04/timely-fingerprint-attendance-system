@@ -19,7 +19,7 @@ static bool gotNome = false;
 static bool enrollPending = false;
 static bool deletePending = false; // Delete request for a specific ID.
 
-// Declaração do callback do MQTT
+// MQTT callback declaration.
 void onMqttMessage(char *topic, byte *payload, unsigned int length);
 
 // Reset state so the device waits for the next user request.
@@ -38,13 +38,46 @@ void resetState()
     LCDMessage("A aguardar dados", "do servidor...");
 }
 
+// Enrollment/delete state machine driven by MQTT requests and timed LCD prompts.
+enum EnrollState
+{
+    IDLE,                 // waiting for MQTT data
+    DATA_RECEIVED,        // has data, waiting to start
+    ENROLLING,            // enrolling on the sensor (blocking by nature)
+    SHOWING_RESULT,       // shows enroll result on the LCD for a fixed time
+    DELETING,             // deleting a specific slot
+    SHOWING_DELETE_RESULT // shows delete result on the LCD for a fixed time
+};
+
+static EnrollState state = IDLE;
+static unsigned long stateChangedAt = 0;
+// Durations for showing results on the LCD before resetting to idle.
+static const unsigned long RESULT_DURATION = 3000;
+static const unsigned long DELETE_RESULT_DURATION = 4000;
+static const unsigned long START_DELAY = 2000;
+static int lastResult = 0;
+
 void setup()
 {
     Serial.begin(115200);
     delay(1000);
 
+    // Initial banner with firmware info.
+    Serial.println();
+    Serial.println("==========================================");
+    Serial.printf("Timely Fingerprint System — v%s\n", FIRMWARE_VERSION);
+    Serial.printf("Build: %s\n", FIRMWARE_BUILD_DATE);
+    Serial.println("==========================================");
+
     // Hardware and network bring-up.
     initLCD();
+
+    // Show firmware version on LCD at startup for quick reference (e.g. during OTA testing).
+    char line2[17];
+    snprintf(line2, sizeof(line2), "v%s", FIRMWARE_VERSION);
+    LCDMessage("Timely System", line2);
+    delay(2000);
+
     connectWiFi();
 
     // OTA must be initialized before MQTT so updates work even with Wi-Fi instability.
@@ -57,7 +90,7 @@ void setup()
     resetState();
 }
 
-// Implementação do callback — com acesso às variáveis globais
+// MQTT callback implementation; updates shared state for the main loop.
 void onMqttMessage(char *topic, byte *payload, unsigned int length)
 {
     // Copy the MQTT payload to a local buffer and ensure null-termination.
@@ -106,29 +139,93 @@ void onMqttMessage(char *topic, byte *payload, unsigned int length)
 
 void loop()
 {
-    // Blocks here if Wi-Fi drops, and resumes only when connected again.
+    // Keep connectivity services alive before processing the state machine.
     connectWiFi();
-    // OTA handler must run frequently to accept updates.
     handleOTA();
     mqttLoop();
+    updateLCD();
 
-    // Process delete requests immediately (no name required).
-    if (deletePending)
+    switch (state)
     {
-        Serial.printf("A apagar ID=%d\n", pendingUserID);
+    case IDLE:
+    {
+        // Check if a new request arrived. Delete takes priority if both are set.
+        if (deletePending)
+        {
+            state = DELETING;
+            stateChangedAt = millis();
+        }
+        else if (enrollPending)
+        {
+            Serial.printf("A registar: ID=%u Nome=%s\n",
+                          pendingUserID, pendingNome);
+            LCDMessage("A iniciar registo", pendingNome);
+            state = DATA_RECEIVED;
+            stateChangedAt = millis();
+        }
+        break;
+    }
+
+    case DATA_RECEIVED:
+    {
+        // Wait START_DELAY before starting enrollment so the user sees the prompt.
+        if (millis() - stateChangedAt >= START_DELAY)
+        {
+            state = ENROLLING;
+        }
+        break;
+    }
+
+    case ENROLLING:
+    {
+        // enrollFinger() blocks, but it calls mqttLoop() and handleOTA()
+        // internally while waiting for finger placement.
+        lastResult = enrollFinger(pendingUserID);
+
+        if (lastResult == 1)
+        {
+            Serial.println("Enroll bem-sucedido!");
+            LCDMessage("Enroll", "bem-sucedido!");
+            saveUser(pendingUserID, pendingNome);
+            sendEnrollStatus(pendingUserID, 1);
+        }
+        else
+        {
+            Serial.println("Enroll falhou.");
+            LCDMessage("Enroll", "falhou.");
+            sendEnrollStatus(pendingUserID, 0);
+        }
+
+        state = SHOWING_RESULT;
+        stateChangedAt = millis();
+        break;
+    }
+
+    case SHOWING_RESULT:
+    {
+        if (millis() - stateChangedAt >= RESULT_DURATION)
+        {
+            resetState();
+            state = IDLE;
+        }
+        break;
+    }
+
+    case DELETING:
+    {
+        Serial.printf("A apagar ID=%u\n", pendingUserID);
         LCDMessage("A apagar...", "");
 
+        // deleteFinger() returns 1 on success; keep storage and server in sync.
         int result = deleteFinger(pendingUserID);
 
-        // Report result locally and to the server.
         if (result == 1)
         {
             Serial.println("Delete bem-sucedido!");
+            deleteUser(pendingUserID);
 
             char line2[17];
             snprintf(line2, sizeof(line2), "Slot: %u", pendingUserID);
-
-            deleteUser(pendingUserID);
             LCDMessage("Apagado!", line2);
             sendDeleteStatus(pendingUserID, 1);
         }
@@ -139,48 +236,19 @@ void loop()
             sendDeleteStatus(pendingUserID, 0);
         }
 
-        // Show result briefly, then reset to idle.
-        delay(5000);
-        resetState();
-        return;
+        state = SHOWING_DELETE_RESULT;
+        stateChangedAt = millis();
+        break;
     }
 
-    // No enroll work pending; stay idle.
-    if (!enrollPending)
-        return;
-
-    // Data complete; start enroll flow.
-    Serial.printf("A registar: ID=%d Nome=%s\n", pendingUserID, pendingNome);
-    LCDMessage("A iniciar registo", pendingNome);
-    delay(2000);
-
-    // Capture fingerprint samples and build the template.
-    int result = enrollFinger(pendingUserID);
-
-    // Report result locally and to the server.
-    if (result == 1)
+    case SHOWING_DELETE_RESULT:
     {
-        Serial.println("Enroll bem-sucedido!");
-        LCDMessage("Enroll", "bem-sucedido!");
-        saveUser(pendingUserID, pendingNome);
-        if (!sendEnrollStatus(pendingUserID, 1))
+        if (millis() - stateChangedAt >= DELETE_RESULT_DURATION)
         {
-            Serial.println("Falha ao enviar status HTTP (enroll sucesso) — sem retry automático.");
+            resetState();
+            state = IDLE;
         }
+        break;
     }
-    else
-    {
-        Serial.println("Enroll falhou.");
-        LCDMessage("Enroll", "falhou.");
-        if (!sendEnrollStatus(pendingUserID, 0))
-        {
-            Serial.println("Falha ao enviar status HTTP (enroll falha) — sem retry automático.");
-        }
     }
-
-    // Keep the result on screen briefly.
-    delay(3000);
-
-    // Reset for the next user request.
-    resetState();
 }
