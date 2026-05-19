@@ -21,114 +21,68 @@ static void initHttpClient()
     httpClientInitialized = true;
 }
 
-// File-local helper; not exposed in the header.
-// Builds and sends a small JSON payload and returns true for 2xx responses.
-static bool postStatus(const char *url, uint16_t userId, uint8_t status)
+// Helper function to send a JSON POST request and print the response.
+static bool postJson(const char *url, const char *jsonPayload)
 {
-    // Abort early if there is no network connection.
     if (WiFi.status() != WL_CONNECTED)
     {
-        Serial.println("[HTTP] WiFi não ligado");
+        Serial.println("[HTTP] WiFi nao ligado");
         return false;
     }
 
     initHttpClient();
 
-    // Use a short-lived HTTPClient for each POST
     HTTPClient http;
+    http.setReuse(true);
+
     if (!http.begin(httpClient, url))
     {
-        Serial.println("[HTTP] Falha ao iniciar ligação");
+        Serial.println("[HTTP] Falha ao iniciar ligacao");
         return false;
     }
 
-    // JSON payload with user id and status code.
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("Connection", "keep-alive");
 
+    Serial.printf("[HTTP] POST %s — Body: %s\n", url, jsonPayload);
+
+    int code = http.POST(jsonPayload);
+
+    if (code > 0)
+    {
+        Serial.printf("[HTTP] Resposta: %d — %s\n",
+                      code, http.getString().c_str());
+    }
+    else
+    {
+        Serial.printf("[HTTP] Erro: %s\n", http.errorToString(code).c_str());
+    }
+
+    http.end();
+    return code >= 200 && code < 300;
+}
+
+// ── Public API ─────────────────────────────────────────────
+bool sendEnrollStatus(uint16_t userId, uint8_t status)
+{
     char payload[64];
     snprintf(payload, sizeof(payload),
              "{\"user_id\":%u,\"status\":%u}", userId, status);
-
-    Serial.printf("[HTTP] POST %s — Body: %s\n", url, payload);
-
-    // Send request and capture the HTTP response code.
-    int code = http.POST(payload);
-
-    if (code > 0)
-    {
-        Serial.printf("[HTTP] Resposta: %d — %s\n", code, http.getString().c_str());
-    }
-    else
-    {
-        Serial.printf("[HTTP] Erro: %s\n", http.errorToString(code).c_str());
-    }
-
-    // Release resources (socket and buffers).
-    http.end();
-    return code >= 200 && code < 300; // Success for any 2xx response
+    return postJson(ENROLL_STATUS_URL, payload);
 }
 
-static bool postPonto(const char *url, uint16_t userId)
-{
-    // Abort early if there is no network connection.
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        Serial.println("[HTTP] WiFi não ligado");
-        return false;
-    }
-
-    initHttpClient();
-
-    // Use a short-lived HTTPClient for each POST
-    HTTPClient http;
-    http.setReuse(true);
-    
-    if (!http.begin(httpClient, url))
-    {
-        Serial.println("[HTTP] Falha ao iniciar ligação");
-        return false;
-    }
-
-    // JSON payload with user id and status code.
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("Connection", "keep-alive");
-    char payload[64];
-    snprintf(payload, sizeof(payload),
-             "{\"user_id\":%u}", userId);
-
-    Serial.printf("[HTTP] POST %s — Body: %s\n", url, payload);
-
-    // Send request and capture the HTTP response code.
-    int code = http.POST(payload);
-
-    if (code > 0)
-    {
-        Serial.printf("[HTTP] Resposta: %d — %s\n", code, http.getString().c_str());
-    }
-    else
-    {
-        Serial.printf("[HTTP] Erro: %s\n", http.errorToString(code).c_str());
-    }
-
-    // Release resources (socket and buffers).
-    http.end();
-    return code >= 200 && code < 300; // Success for any 2xx response
-}
-
-// Public API wrappers
-// Post enroll status to the server.
-bool sendEnrollStatus(uint16_t userId, uint8_t status)
-{
-    return postStatus(ENROLL_STATUS_URL, userId, status);
-}
-
-// Post delete status to the server.
 bool sendDeleteStatus(uint16_t userId, uint8_t status)
 {
-    return postStatus(DELETE_STATUS_URL, userId, status);
+    char payload[64];
+    snprintf(payload, sizeof(payload),
+             "{\"user_id\":%u,\"status\":%u}", userId, status);
+    return postJson(DELETE_STATUS_URL, payload);
 }
 
 bool sendPonto(uint16_t userId)
 {
-    return postPonto(PONTO_URL, userId);
+    char payload[64];
+    snprintf(payload, sizeof(payload),
+             "{\"user_id\":%u}", userId);
+    return postJson(PONTO_URL, payload);
 }
