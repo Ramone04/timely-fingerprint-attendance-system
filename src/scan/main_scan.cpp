@@ -23,7 +23,21 @@ void setup()
     Serial.begin(115200);
     delay(1000);
 
+    // Initial banner with firmware info.
+    Serial.println();
+    Serial.println("==========================================");
+    Serial.printf("Timely Fingerprint System — v%s\n", FIRMWARE_VERSION);
+    Serial.printf("Build: %s\n", FIRMWARE_BUILD_DATE);
+    Serial.println("==========================================");
+
     initLCD();
+
+    // Show firmware version on LCD at startup for quick reference (e.g. during OTA testing).
+    char line2[17];
+    snprintf(line2, sizeof(line2), "v%s", FIRMWARE_VERSION);
+    LCDMessage("Timely System", line2);
+    delay(2000);
+
     connectWiFi();
     initOTA();
     if (!initSensor())
@@ -39,6 +53,7 @@ void loop()
 {
     handleOTA();
     connectWiFi();
+    updateLCD();
 
     switch (state)
     {
@@ -64,9 +79,9 @@ void loop()
                 LCDMessage("Erro ao registar", userName);
             }
 
-            //Teste HTTP sem retry automático — o resultado é mostrado mesmo que a ligação falhe, para feedback imediato ao utilizador
-            // LCDMessage("Ponto registado!", userName);
-            // sendPonto(result);
+            // Teste HTTP sem retry automático — o resultado é mostrado mesmo que a ligação falhe, para feedback imediato ao utilizador
+            //  LCDMessage("Ponto registado!", userName);
+            //  sendPonto(result);
 
             stateChangedAt = millis();
             state = SHOWING_RESULT;
