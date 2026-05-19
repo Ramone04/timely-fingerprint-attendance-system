@@ -3,14 +3,19 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 
-LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
+static LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
 
-// Reinitialize the LCD every 5 minutes to prevent it from freezing due to I2C issues
+// Periodic re-init helps recover the LCD if it glitches on long uptimes.
 static const unsigned long LCD_REINIT_INTERVAL_MS = 5 * 60 * 1000UL;
 static unsigned long lastReinitMs = 0;
 
+// Cache the last message so it can be restored after a re-init.
+static char lastLine1[17] = "";
+static char lastLine2[17] = "";
+
 static String normalizeLine(const char *text)
 {
+    // Trim or pad to the LCD column width so old characters are overwritten.
     String line = text ? String(text) : String("");
     if (line.length() > LCD_COLS)
     {
@@ -23,10 +28,21 @@ static String normalizeLine(const char *text)
     return line;
 }
 
+// Internal helper: writes both lines to the LCD without touching the cache.
+static void renderLCD(const char *line1, const char *line2)
+{
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(normalizeLine(line1));
+    lcd.setCursor(0, 1);
+    lcd.print(normalizeLine(line2));
+}
+
 void initLCD()
 {
+    // Initialize I2C and the LCD controller.
     Wire.begin(LCD_SDA_PIN, LCD_SCL_PIN);
-    Wire.setClock(100000); // Set I2C clock to 100kHz (more resistant to noise)
+    Wire.setClock(10000);
     lcd.init();
     lcd.backlight();
     lcd.clear();
@@ -35,17 +51,25 @@ void initLCD()
 
 void LCDMessage(const char *line1, const char *line2)
 {
-    // Reinitialize the LCD if it has been more than 5 minutes since the last initialization
-    if (millis() - lastReinitMs >= LCD_REINIT_INTERVAL_MS)
-    {
-        lcd.init();
-        lcd.backlight();
-        lastReinitMs = millis();
-    }
+    // Store the message so updateLCD() can restore it after a re-init.
+    strncpy(lastLine1, line1 ? line1 : "", sizeof(lastLine1) - 1);
+    lastLine1[sizeof(lastLine1) - 1] = '\0';
 
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(normalizeLine(line1));
-    lcd.setCursor(0, 1);
-    lcd.print(normalizeLine(line2));
+    strncpy(lastLine2, line2 ? line2 : "", sizeof(lastLine2) - 1);
+    lastLine2[sizeof(lastLine2) - 1] = '\0';
+
+    renderLCD(line1, line2);
+}
+
+// Call from loop() to re-init periodically and recover from LCD glitches.
+void updateLCD()
+{
+    if (millis() - lastReinitMs < LCD_REINIT_INTERVAL_MS)
+        return;
+
+    // Re-init and re-render the last cached message.
+    lcd.init();
+    lcd.backlight();
+    renderLCD(lastLine1, lastLine2);
+    lastReinitMs = millis();
 }

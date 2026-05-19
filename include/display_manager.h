@@ -5,3 +5,6 @@ void initLCD();
 
 // Print up to two lines; text is truncated or padded to LCD width.
 void LCDMessage(const char* line1, const char* line2 = "");
+
+// Force an LCD update (e.g. to refresh the backlight or recover from a frozen state).
+void updateLCD();
