@@ -2,7 +2,7 @@
 #include <Preferences.h>
 #include <string.h>
 
-Preferences prefs;
+static Preferences prefs;
 
 static void buildKey(uint16_t slotId, char *key, size_t keyLen)
 {
