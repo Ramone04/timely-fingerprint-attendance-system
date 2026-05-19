@@ -157,7 +157,7 @@ int scanFinger()
         return -2;
 
     // Fast search
-    if (finger.fingerFastSearch() != FINGERPRINT_OK)
+    if (finger.fingerSearch() != FINGERPRINT_OK)
         return -3;
 
     // if (finger.fingerSearch() != FINGERPRINT_OK) return -3;
