@@ -58,15 +58,15 @@ O sistema é composto por três peças que comunicam entre si:
 
 O firmware está dividido em módulos independentes, cada um com responsabilidade única:
 
-| Módulo | Responsabilidade |
-|--------|------------------|
-| `wifi_manager` | Conectar ao WiFi, configurar IP estático, gerir reconexão |
-| `mqtt_manager` | Sessão MQTT/TLS, subscrição de tópicos, callback |
-| `http_manager` | Pedidos HTTPS para a API Laravel (enroll, ponto, delete) |
-| `fingerprint_manager` | Comunicação UART com o sensor AS608 |
-| `display_manager` | Controlo do LCD I2C com re-inicialização periódica |
-| `ota_manager` | Updates OTA via WiFi (ArduinoOTA) |
-| `user_storage` | Persistência local de utilizadores em NVS |
+|         Módulo        |                     Responsabilidade                      |
+|-----------------------|-----------------------------------------------------------|
+| `wifi_manager`        | Conectar ao WiFi, configurar IP estático, gerir reconexão |
+| `mqtt_manager`        | Sessão MQTT/TLS, subscrição de tópicos, callback          |
+| `http_manager`        | Pedidos HTTPS para a API Laravel (enroll, ponto, delete)  |
+| `fingerprint_manager` | Comunicação UART com o sensor AS608                       |
+| `display_manager`     | Controlo do LCD I2C com re-inicialização periódica        |
+| `ota_manager`         | Updates OTA via WiFi (ArduinoOTA)                         |
+| `user_storage`        | Persistência local de utilizadores em NVS                 |
 
 Os dois firmwares principais (`main_enroll.cpp` e `main_scan.cpp`) orquestram estes módulos. Cada um é compilado num **environment** separado do PlatformIO, gerando binários distintos para a mesma board física consoante o papel que o ESP32 vai desempenhar.
 
@@ -74,11 +74,11 @@ Os dois firmwares principais (`main_enroll.cpp` e `main_scan.cpp`) orquestram es
 
 ## Hardware
 
-| Componente | Modelo | Notas |
-|------------|--------|-------|
-| Microcontrolador | JOY-IT SBC-NodeMCU-ESP32-C | ESP32 com USB-C |
+|     Componente    |                Modelo              |           Notas          |
+|-------------------|------------------------------------|--------------------------|
+| Microcontrolador  | JOY-IT SBC-NodeMCU-ESP32-C         | ESP32 com USB-C          |
 | Sensor biométrico | Keyestudio MD0622 (AS608, 8 pinos) | Sensor óptico, 300 slots |
-| Display | Keyestudio KS0061 LCD 16x2 I2C | Endereço 0x27 |
+| Display           | Keyestudio KS0061 LCD 16x2 I2C     | Endereço 0x27            |
 
 **Ligações principais:**
 
@@ -207,11 +207,11 @@ O ficheiro `platformio.ini` define vários "environments" — cada um produz um 
 
 ![platformio.ini](docs/images/05-platformio-ini.png)
 
-| Environment | Para que serve | Variante por cabo |
-|-------------|----------------|-------------------|
-| `enroll` | Dispositivo de enrollment | `enroll-cable` |
-| `scan` | Dispositivo de registo de ponto | `scan-cable` |
-| `test` | Código experimental ou ficheiros de `examples/` para despiste de erros e bugs | `test-cable` |
+| Environment |                                Para que serve                                 | Variante por cabo |
+|-------------|-------------------------------------------------------------------------------|-------------------|
+| `enroll`    | Dispositivo de enrollment                                                     | `enroll-cable`    |
+| `scan`      | Dispositivo de registo de ponto                                               | `scan-cable`      |
+| `test`      | Código experimental ou ficheiros de `examples/` para despiste de erros e bugs | `test-cable`      |
 
 **Quando usar cada um:**
 
@@ -232,7 +232,7 @@ O ficheiro `platformio.ini` define vários "environments" — cada um produz um 
 > Define IDs diferentes em cada environment para evitar conflitos.
 
 ---
-
+????????????????????????????????????????????????????????????????????????????????????????????????????????
 ## Mudar entre environments
 
 Há duas formas de mudar entre environments no VS Code:
@@ -267,11 +267,11 @@ Na barra azul em baixo encontras três ícones principais:
 
 ![Action buttons](docs/images/09-action-buttons.png)
 
-| Ícone | Acção | Atalho | O que faz |
-|-------|-------|--------|-----------|
-| ✓ | **Build** | `Ctrl+Alt+B` | Compila o environment seleccionado |
-| → | **Upload** | `Ctrl+Alt+U` | Compila e envia para o ESP32 |
-| 🔌 | **Monitor** | `Ctrl+Alt+S` | Abre o Serial Monitor a 115200 baud |
+| Ícone |    Acção    |    Atalho    |               O que faz             |
+|-------|-------------|--------------|-------------------------------------|
+|   ✓   | **Build**   | `Ctrl+Alt+B` | Compila o environment seleccionado  |
+|   →   | **Upload**  | `Ctrl+Alt+U` | Compila e envia para o ESP32        |
+|  🔌   | **Monitor** | `Ctrl+Alt+S` | Abre o Serial Monitor a 115200 baud |
 
 ### Compilar
 
