@@ -42,7 +42,7 @@ void initLCD()
 {
     // Initialize I2C and the LCD controller.
     Wire.begin(LCD_SDA_PIN, LCD_SCL_PIN);
-    Wire.setClock(10000);
+    Wire.setClock(100000);
     lcd.init();
     lcd.backlight();
     lcd.clear();
