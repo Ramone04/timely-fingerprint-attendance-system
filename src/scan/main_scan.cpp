@@ -76,7 +76,7 @@ void loop()
             }
             else
             {
-                LCDMessage("Erro ao registar", userName);
+                LCDMessage("After hours", userName);
             }
 
             // Teste HTTP sem retry automático — o resultado é mostrado mesmo que a ligação falhe, para feedback imediato ao utilizador

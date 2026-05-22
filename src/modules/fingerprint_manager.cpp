@@ -89,7 +89,7 @@ int enrollFinger(uint16_t slotId)
     delay(300); // Short pause to let the sensor stabilize
 
     // -- Read 2 -----------------------------------------------
-    LCDMessage("Coloca o mesmo", "dedo. Leitura 2/2");
+    LCDMessage("Coloca o mesmo", "dedo.Leitura 2/2");
 
     if (waitForFinger() != FINGERPRINT_OK)
         return 0;
