@@ -1,75 +1,86 @@
-#include <Arduino.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include <Adafruit_Fingerprint.h>
+// Test utility — wipes ALL fingerprint templates from the sensor.
+// Run via env:test or env:test-cable.
+// WARNING: starts wiping immediately after boot — there is no confirmation.
+// After completion, OTA stays active so you can flash another firmware.
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-HardwareSerial fpSerial(2);
-Adafruit_Fingerprint finger(&fpSerial);
+#include <Arduino.h>
+#include "config.h"
+#include "wifi_manager.h"
+#include "display_manager.h"
+#include "fingerprint_manager.h"
+#include "ota_manager.h"
+#include "user_storage.h"
 
 void setup() {
-  Serial.begin(115200);
-  delay(1000);
+    Serial.begin(115200);
+    delay(1000);
 
-  Wire.begin(21, 22);
-  lcd.init();
-  lcd.backlight();
+    Serial.println();
+    Serial.println("==========================================");
+    Serial.println("    FINGERPRINT WIPE UTILITY              ");
+    Serial.println("==========================================");
+    Serial.printf("Firmware: v%s\n", FIRMWARE_VERSION);
 
-  fpSerial.begin(57600, SERIAL_8N1, 16, 17);
-  finger.begin(57600);
+    // Hardware bring-up.
+    initLCD();
 
-  if (!finger.verifyPassword()) {
-    lcd.setCursor(0, 0); lcd.print(" Sensor error!  ");
-    Serial.println("Sensor not found!"); while(1);
-  }
+    char line2[17];
+    snprintf(line2, sizeof(line2), "v%s", FIRMWARE_VERSION);
+    LCDMessage("Wipe Utility", line2);
+    delay(1500);
 
-  finger.getParameters();
-  uint16_t count = finger.templateCount;
-  finger.getTemplateCount();
+    // Clear only the user Preferences namespace.
+    Serial.println("Clearing user storage...");
+    LCDMessage("Clearing users", "Please wait");
+    if (!clearAllUsers()) {
+        Serial.println("User storage clear failed.");
+        LCDMessage("Users failed!", "Continuing");
+        delay(1500);
+    } else {
+        Serial.println("User storage cleared.");
+        LCDMessage("Users cleared", "Continuing");
+        delay(1000);
+    }
 
-  Serial.println("=============================");
-  Serial.println("  FINGERPRINT WIPE UTILITY   ");
-  Serial.println("=============================");
-  Serial.printf("Templates stored: %d\n", finger.templateCount);
-  Serial.println("\nType  YES  and press Enter to delete ALL templates.");
-  Serial.println("Type anything else to cancel.");
+    // Network — needed so OTA remains accessible afterwards.
+    connectWiFi();
+    initOTA();
 
-  lcd.setCursor(0, 0); lcd.print("Type YES in     ");
-  lcd.setCursor(0, 1); lcd.print("Serial to wipe  ");
+    // Sensor.
+    if (!initSensor()) {
+        LCDMessage("Sensor erro!", "Verifica wiring");
+        while (true) {
+            handleOTA();
+            delay(50);
+        }
+    }
+
+    // Report what we are about to wipe.
+    uint16_t before = getTemplateCount();
+    Serial.printf("Templates stored: %u\n", before);
+    Serial.println("Wiping all templates...");
+    LCDMessage("Wiping...", "Please wait");
+
+    // The actual wipe — irreversible.
+    if (wipeAllFingerprints()) {
+        Serial.println("Done! All templates deleted.");
+        LCDMessage("Done! Sensor", "is now clean");
+    } else {
+        Serial.println("Wipe failed! Try re-uploading.");
+        LCDMessage("Wipe failed!", "Re-upload");
+    }
+
+    Serial.println();
+    Serial.println("==========================================");
+    Serial.println("Utility finished. OTA still available for");
+    Serial.println("flashing another firmware when ready.");
+    Serial.println("==========================================");
 }
 
 void loop() {
-  if (!Serial.available()) return;
-
-  String input = Serial.readStringUntil('\n');
-  input.trim();
-
-  if (input == "YES") {
-    Serial.println("\nDeleting all templates...");
-    lcd.clear();
-    lcd.setCursor(0, 0); lcd.print("  Wiping all    ");
-    lcd.setCursor(0, 1); lcd.print("  templates...  ");
-
-    if (finger.emptyDatabase() == FINGERPRINT_OK) {
-      Serial.println("Done! All templates deleted.");
-      Serial.println("Sensor is clean and ready for production.");
-      lcd.clear();
-      lcd.setCursor(0, 0); lcd.print("  Done! Sensor  ");
-      lcd.setCursor(0, 1); lcd.print("  is now clean  ");
-    } else {
-      Serial.println("Delete failed! Try again.");
-      lcd.clear();
-      lcd.setCursor(0, 0); lcd.print("  Delete failed ");
-      lcd.setCursor(0, 1); lcd.print("  Try again     ");
-    }
-
-  } else {
-    Serial.println("Cancelled — no templates were deleted.");
-    lcd.clear();
-    lcd.setCursor(0, 0); lcd.print("  Cancelled     ");
-    lcd.setCursor(0, 1); lcd.print("  No changes    ");
-  }
-
-  // Stop here — require re-upload to run again
-  while(1) delay(1);
+    // Keep OTA and WiFi alive so you can flash another firmware
+    // without needing to power-cycle or use cable.
+    handleOTA();
+    connectWiFi();
+    updateLCD();
 }

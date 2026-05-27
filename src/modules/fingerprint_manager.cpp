@@ -163,3 +163,13 @@ int scanFinger()
     // if (finger.fingerSearch() != FINGERPRINT_OK) return -3;
     return finger.fingerID;
 }
+
+// -- Utility functions -----------------------------------------
+uint16_t getTemplateCount() {
+    if (finger.getTemplateCount() != FINGERPRINT_OK) return 0;
+    return finger.templateCount;
+}
+
+bool wipeAllFingerprints() {
+    return finger.emptyDatabase() == FINGERPRINT_OK;
+}

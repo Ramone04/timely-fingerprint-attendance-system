@@ -11,3 +11,6 @@ bool loadUser(uint16_t slotId, char* nameUser, size_t maxlen);
 
 // Deletes the user data for the specified slot.
 bool deleteUser(uint16_t slotId);
+
+// Clears all stored users from the Preferences namespace.
+bool clearAllUsers();

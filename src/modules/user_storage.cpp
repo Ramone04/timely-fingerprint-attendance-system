@@ -61,3 +61,13 @@ bool deleteUser(uint16_t slotId)
     Serial.printf("[NVS] deleteUser key='%s' result=%d\n", key, result);
     return result;
 }
+
+bool clearAllUsers()
+{
+    prefs.begin("users", false);
+    bool result = prefs.clear();
+    prefs.end();
+
+    Serial.printf("[NVS] clearAllUsers result=%d\n", result);
+    return result;
+}
