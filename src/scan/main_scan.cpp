@@ -63,25 +63,28 @@ void loop()
 
         if (result >= 0)
         {
-            // Feedback imediato — antes do HTTP
             LCDMessage("A ler...", "Aguarde");
             Serial.printf("Match! Slot #%d\n", result);
 
             char userName[32];
             loadUser(result, userName, sizeof(userName));
 
-            if (sendPonto(result))
-            {
-                LCDMessage("Ponto registado!", userName);
-            }
-            else
-            {
-                LCDMessage("After hours", userName);
-            }
+            PontoResult res = sendPonto(result);
 
-            // Teste HTTP sem retry automático — o resultado é mostrado mesmo que a ligação falhe, para feedback imediato ao utilizador
-            //  LCDMessage("Ponto registado!", userName);
-            //  sendPonto(result);
+            switch (res)
+            {
+            case PONTO_OK:
+                LCDMessage("Ponto registado!", userName);
+                break;
+
+            case PONTO_AFTER_HOURS:
+                LCDMessage("After hours", userName);
+                break;
+
+            case PONTO_FAILED:
+                LCDMessage("Erro de ligacao", userName);
+                break;
+            }
 
             stateChangedAt = millis();
             state = SHOWING_RESULT;

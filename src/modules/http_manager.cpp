@@ -79,10 +79,43 @@ bool sendDeleteStatus(uint16_t userId, uint8_t status)
     return postJson(DELETE_STATUS_URL, payload);
 }
 
-bool sendPonto(uint16_t userId)
-{
+PontoResult sendPonto(uint16_t userId) {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("[HTTP] WiFi nao ligado");
+        return PONTO_FAILED;
+    }
+
+    initHttpClient();
+
+    HTTPClient http;
+    http.setReuse(true);
+
+    if (!http.begin(httpClient, PONTO_URL)) {
+        Serial.println("[HTTP] Falha ao iniciar ligacao");
+        return PONTO_FAILED;
+    }
+
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("Connection", "keep-alive");
+
     char payload[64];
-    snprintf(payload, sizeof(payload),
-             "{\"user_id\":%u}", userId);
-    return postJson(PONTO_URL, payload);
+    snprintf(payload, sizeof(payload), "{\"user_id\":%u}", userId);
+
+    Serial.printf("[HTTP] POST %s — Body: %s\n", PONTO_URL, payload);
+
+    int code = http.POST(payload);
+    String response = (code > 0) ? http.getString() : "";
+
+    Serial.printf("[HTTP] Resposta: %d — %s\n", code, response.c_str());
+
+    http.end();
+
+    // Análise do código HTTP
+    if (code >= 200 && code < 300) {
+        return PONTO_OK;
+    }
+    if (code == 400) {
+        return PONTO_AFTER_HOURS;
+    }
+    return PONTO_FAILED;
 }
