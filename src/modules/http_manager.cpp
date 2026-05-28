@@ -21,6 +21,13 @@ static void initHttpClient()
     httpClientInitialized = true;
 }
 
+// Reset the TLS client to recover from errors like heap fragmentation or connection issues.
+static void resetHttpClient() {
+    httpClient.stop();              // fecha o socket atual
+    httpClientInitialized = false;  // força re-init no próximo uso
+    Serial.println("[HTTP] Cliente TLS reiniciado");
+}
+
 // Helper function to send a JSON POST request and print the response.
 static bool postJson(const char *url, const char *jsonPayload)
 {
@@ -71,6 +78,8 @@ bool sendEnrollStatus(uint16_t userId, uint8_t status)
     return postJson(ENROLL_STATUS_URL, payload);
 }
 
+// Post delete result to the backend: status 1=success, 0=failure.
+// Returns true only when the API responds with HTTP 2xx.
 bool sendDeleteStatus(uint16_t userId, uint8_t status)
 {
     char payload[64];
@@ -79,7 +88,8 @@ bool sendDeleteStatus(uint16_t userId, uint8_t status)
     return postJson(DELETE_STATUS_URL, payload);
 }
 
-PontoResult sendPonto(uint16_t userId) {
+// Post attendance point to the backend.
+static PontoResult sendPonto(uint16_t userId) {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[HTTP] WiFi nao ligado");
         return PONTO_FAILED;
@@ -92,6 +102,7 @@ PontoResult sendPonto(uint16_t userId) {
 
     if (!http.begin(httpClient, PONTO_URL)) {
         Serial.println("[HTTP] Falha ao iniciar ligacao");
+        resetHttpClient();          // ★ adicionar
         return PONTO_FAILED;
     }
 
@@ -110,12 +121,33 @@ PontoResult sendPonto(uint16_t userId) {
 
     http.end();
 
-    // Análise do código HTTP
     if (code >= 200 && code < 300) {
         return PONTO_OK;
     }
     if (code == 400) {
         return PONTO_AFTER_HOURS;
+    }
+
+    resetHttpClient();              
+    return PONTO_FAILED;
+}
+
+// Post attendance point to the backend.
+// Returns the result of the operation, retrying once on failure.
+PontoResult sendPontoWithRetry(uint16_t userId) {
+    for (uint8_t attempt = 1; attempt <= 2; attempt++) {
+        PontoResult res = sendPonto(userId);
+
+        // Respostas definitivas — não retry
+        if (res == PONTO_OK || res == PONTO_AFTER_HOURS) {
+            return res;
+        }
+
+        // Falhou — o sendPonto já fez resetHttpClient internamente
+        // A próxima tentativa vai criar ligação nova
+        Serial.printf("[HTTP] Tentativa %d falhou, a repetir com ligacao nova...\n",
+                      attempt);
+        delay(500);
     }
     return PONTO_FAILED;
 }

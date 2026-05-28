@@ -69,7 +69,7 @@ void loop()
             char userName[32];
             loadUser(result, userName, sizeof(userName));
 
-            PontoResult res = sendPonto(result);
+            PontoResult res = sendPontoWithRetry(result);
 
             switch (res)
             {

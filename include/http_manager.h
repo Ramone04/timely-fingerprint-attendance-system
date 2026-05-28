@@ -18,4 +18,4 @@ bool sendDeleteStatus(uint16_t userId, uint8_t status);
 
 // Post attendance point to the backend.
 // Returns the result of the operation.
-PontoResult sendPonto(uint16_t userId);
+PontoResult sendPontoWithRetry(uint16_t userId);
