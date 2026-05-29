@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 // Static TLS client created once for the lifetime of the program.
 // Reuse avoids mbedTLS heap fragmentation between requests.
@@ -22,9 +23,10 @@ static void initHttpClient()
 }
 
 // Reset the TLS client to recover from errors like heap fragmentation or connection issues.
-static void resetHttpClient() {
-    httpClient.stop();              // fecha o socket atual
-    httpClientInitialized = false;  // força re-init no próximo uso
+static void resetHttpClient()
+{
+    httpClient.stop();             // fecha o socket atual
+    httpClientInitialized = false; // força re-init no próximo uso
     Serial.println("[HTTP] Cliente TLS reiniciado");
 }
 
@@ -88,8 +90,39 @@ bool sendDeleteStatus(uint16_t userId, uint8_t status)
     return postJson(DELETE_STATUS_URL, payload);
 }
 
+// Parses the JSON response into the event info struct.
+// Safe to call on empty/malformed responses — leaves info empty.
+static void parseEventInfo(const String &response, PontoEventInfo &info)
+{
+    info.eventType[0] = '\0';
+    info.userName[0] = '\0';
+
+    if (response.length() == 0)
+        return;
+
+    StaticJsonDocument<256> doc;
+    DeserializationError err = deserializeJson(doc, response);
+    if (err)
+    {
+        Serial.printf("[HTTP] JSON parse erro: %s\n", err.c_str());
+        return;
+    }
+
+    const char *type = doc["event_type"] | "";
+    const char *name = doc["user_name"] | "";
+
+    strncpy(info.eventType, type, sizeof(info.eventType) - 1);
+    info.eventType[sizeof(info.eventType) - 1] = '\0';
+
+    strncpy(info.userName, name, sizeof(info.userName) - 1);
+    info.userName[sizeof(info.userName) - 1] = '\0';
+}
+
 // Post attendance point to the backend.
-static PontoResult sendPonto(uint16_t userId) {
+static PontoResult sendPonto(uint16_t userId, PontoEventInfo& info) {
+    info.eventType[0] = '\0';
+    info.userName[0]  = '\0';
+
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[HTTP] WiFi nao ligado");
         return PONTO_FAILED;
@@ -102,7 +135,7 @@ static PontoResult sendPonto(uint16_t userId) {
 
     if (!http.begin(httpClient, PONTO_URL)) {
         Serial.println("[HTTP] Falha ao iniciar ligacao");
-        resetHttpClient();          // ★ adicionar
+        resetHttpClient();
         return PONTO_FAILED;
     }
 
@@ -122,31 +155,29 @@ static PontoResult sendPonto(uint16_t userId) {
     http.end();
 
     if (code >= 200 && code < 300) {
+        parseEventInfo(response, info);
         return PONTO_OK;
     }
     if (code == 400) {
+        parseEventInfo(response, info);   // ★ também populamos no after hours
         return PONTO_AFTER_HOURS;
     }
 
-    resetHttpClient();              
+    resetHttpClient();
     return PONTO_FAILED;
 }
 
 // Post attendance point to the backend.
 // Returns the result of the operation, retrying once on failure.
-PontoResult sendPontoWithRetry(uint16_t userId) {
+PontoResult sendPontoWithRetry(uint16_t userId, PontoEventInfo& info) {
     for (uint8_t attempt = 1; attempt <= 2; attempt++) {
-        PontoResult res = sendPonto(userId);
+        PontoResult res = sendPonto(userId, info);
 
-        // Respostas definitivas — não retry
         if (res == PONTO_OK || res == PONTO_AFTER_HOURS) {
             return res;
         }
 
-        // Falhou — o sendPonto já fez resetHttpClient internamente
-        // A próxima tentativa vai criar ligação nova
-        Serial.printf("[HTTP] Tentativa %d falhou, a repetir com ligacao nova...\n",
-                      attempt);
+        Serial.printf("[HTTP] Tentativa %d falhou, a repetir...\n", attempt);
         delay(500);
     }
     return PONTO_FAILED;

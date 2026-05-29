@@ -66,23 +66,49 @@ void loop()
             LCDMessage("A ler...", "Aguarde");
             Serial.printf("Match! Slot #%d\n", result);
 
-            char userName[32];
-            loadUser(result, userName, sizeof(userName));
+            // Nome local do NVS como fallback caso o servidor não devolva nome
+            char localName[32];
+            loadUser(result, localName, sizeof(localName));
 
-            PontoResult res = sendPontoWithRetry(result);
+            PontoEventInfo info = {};
+            PontoResult res = sendPontoWithRetry(result, info);
+
+            // Preferir nome do servidor; cair para o local se vazio
+            const char *displayName = (info.userName[0] != '\0') ? info.userName : localName;
 
             switch (res)
             {
             case PONTO_OK:
-                LCDMessage("Ponto registado!", userName);
+            {
+                char line1[17];
+                if (strcmp(info.eventType, "entry") == 0)
+                {
+                    snprintf(line1, sizeof(line1), "Ola, %s", displayName);
+                    LCDMessage(line1, "Bom trabalho!");
+                }
+                else if (strcmp(info.eventType, "exit") == 0)
+                {
+                    snprintf(line1, sizeof(line1), "Adeus, %s", displayName);
+                    LCDMessage(line1, "Ate amanha!");
+                }
+                else
+                {
+                    // Fallback se o servidor não devolveu event_type
+                    LCDMessage("Ponto registado!", displayName);
+                }
                 break;
+            }
 
             case PONTO_AFTER_HOURS:
-                LCDMessage("After hours", userName);
+            {
+                char line1[17];
+                snprintf(line1, sizeof(line1), "After hours");
+                LCDMessage(line1, displayName);
                 break;
+            }
 
             case PONTO_FAILED:
-                LCDMessage("Erro de ligacao", userName);
+                LCDMessage("Erro de ligacao", localName);
                 break;
             }
 
