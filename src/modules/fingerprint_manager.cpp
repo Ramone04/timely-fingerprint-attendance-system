@@ -7,6 +7,20 @@
 #include <Adafruit_Fingerprint.h>
 #include "ota_manager.h"
 
+// Default confidence thresholds for identifying low-confidence matches.
+// Adjust these based on your sensor's performance and the specific users.
+#ifndef LOW_CONFIDENCE_USERS
+#define LOW_CONFIDENCE_USERS {14}
+#endif
+
+#ifndef NORMAL_CONFIDENCE_THRESHOLD
+#define NORMAL_CONFIDENCE_THRESHOLD 50
+#endif
+
+#ifndef LOW_CONFIDENCE_THRESHOLD
+#define LOW_CONFIDENCE_THRESHOLD 20
+#endif
+
 // Dedicated UART and Adafruit driver instance
 static HardwareSerial fpSerial(2);
 static Adafruit_Fingerprint finger(&fpSerial);
@@ -148,28 +162,55 @@ int deleteFinger(uint16_t slotId)
 }
 
 // -- Scan logic -----------------------------------------------
-//
-int scanFinger()
+
+// Returns true if the slot is allowed to use the reduced confidence threshold.
+static bool isLowConfidenceUser(uint16_t slotId)
 {
-    if (finger.getImage() != FINGERPRINT_OK)
-        return -1;
-    if (finger.image2Tz() != FINGERPRINT_OK)
-        return -2;
+    static const uint16_t lowConfSlots[] = LOW_CONFIDENCE_USERS;
+    static const size_t count = sizeof(lowConfSlots) / sizeof(lowConfSlots[0]);
 
-    // Fast search
-    if (finger.fingerSearch() != FINGERPRINT_OK)
+    for (size_t i = 0; i < count; i++)
+    {
+        if (lowConfSlots[i] == slotId)
+            return true;
+    }
+    return false;
+}
+
+// 
+int scanFinger() {
+    if (finger.getImage() != FINGERPRINT_OK) return -1;
+    if (finger.image2Tz() != FINGERPRINT_OK) return -2;
+    if (finger.fingerSearch() != FINGERPRINT_OK) return -3;
+
+    uint16_t slotId = finger.fingerID;
+    uint16_t confidence = finger.confidence;
+
+    // Pick the threshold based on whether this user is flagged as low-confidence.
+    uint16_t threshold = isLowConfidenceUser(slotId)
+        ? LOW_CONFIDENCE_THRESHOLD
+        : NORMAL_CONFIDENCE_THRESHOLD;
+
+    if (confidence < threshold) {
+        Serial.printf("[FP] Match rejeitado: slot=%u confidence=%u threshold=%u\n",
+                      slotId, confidence, threshold);
         return -3;
+    }
 
-    // if (finger.fingerSearch() != FINGERPRINT_OK) return -3;
-    return finger.fingerID;
+    Serial.printf("[FP] Match aceite: slot=%u confidence=%u threshold=%u\n",
+                  slotId, confidence, threshold);
+    return slotId;
 }
 
 // -- Utility functions -----------------------------------------
-uint16_t getTemplateCount() {
-    if (finger.getTemplateCount() != FINGERPRINT_OK) return 0;
+uint16_t getTemplateCount()
+{
+    if (finger.getTemplateCount() != FINGERPRINT_OK)
+        return 0;
     return finger.templateCount;
 }
 
-bool wipeAllFingerprints() {
+bool wipeAllFingerprints()
+{
     return finger.emptyDatabase() == FINGERPRINT_OK;
 }
