@@ -6,6 +6,7 @@
 #include "fingerprint_manager.h"
 #include "ota_manager.h"
 #include "user_storage.h"
+#include <wifi.h>
 
 // Returns:
 enum ScanState
@@ -17,6 +18,8 @@ enum ScanState
 static ScanState state = IDLE;
 static unsigned long stateChangedAt = 0;
 static const unsigned long RESULT_DURATION = 3000;
+
+static bool wasConnected = true;
 
 void setup()
 {
@@ -55,6 +58,21 @@ void loop()
     connectWiFi();
     updateLCD();
 
+    // Detect reconnection after drop; restore state message.
+    bool isConnected = (WiFi.status() == WL_CONNECTED);
+    if (isConnected && !wasConnected) {
+        // Just reconnected; restore default message by state.
+        switch (state) {
+        case IDLE:
+            LCDMessage("Coloca o dedo", "no sensor");
+            break;
+        // Other states manage themselves on the next cycle.
+        default:
+            break;
+        }
+    }
+    wasConnected = isConnected;
+
     switch (state)
     {
     case IDLE:
@@ -66,14 +84,14 @@ void loop()
             LCDMessage("A ler...", "Aguarde");
             Serial.printf("Match! Slot #%d\n", result);
 
-            // Nome local do NVS como fallback caso o servidor não devolva nome
+            // Local NVS name as fallback if the server does not return a name.
             char localName[32];
             loadUser(result, localName, sizeof(localName));
 
             PontoEventInfo info = {};
             PontoResult res = sendPontoWithRetry(result, info);
 
-            // Preferir nome do servidor; cair para o local se vazio
+            // Prefer server name; fall back to local if empty.
             const char *displayName = (info.userName[0] != '\0') ? info.userName : localName;
 
             switch (res)
@@ -93,7 +111,7 @@ void loop()
                 }
                 else
                 {
-                    // Fallback se o servidor não devolveu event_type
+                    // Fallback if the server did not return event_type.
                     LCDMessage("Ponto registado!", displayName);
                 }
                 break;
@@ -121,7 +139,7 @@ void loop()
             stateChangedAt = millis();
             state = SHOWING_RESULT;
         }
-        // -1 e -2 → ignorados, loop continua
+        // -1 and -2 are ignored; loop continues.
         break;
     }
 
